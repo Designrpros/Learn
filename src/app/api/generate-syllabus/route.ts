@@ -144,8 +144,10 @@ export async function POST(req: Request) {
                         console.log(`[DEBUG] Tag "${tag}" (slug: ${tagSlug}) not found in DB. Skipping.`);
                     }
                 }
-                if (!resolvedParentId) console.log(`[DEBUG] No matching parent found from tags. Topic will be at root.`);
+                console.log(`[DEBUG] No matching parent found from tags. Topic will be at root.`);
             }
+
+            let newTopic: any = null;
 
             try {
                 // Simulated User ID (TODO: Replace with Auth)
@@ -179,7 +181,7 @@ export async function POST(req: Request) {
                 updateData.isPublic = true;
 
                 // Save Topic
-                const [newTopic] = await db.insert(topics).values({
+                const [insertedTopic] = await db.insert(topics).values({
                     title: finalTitle,
                     slug: slug,
                     overview: (object.courseOverview || "") as string,
@@ -193,6 +195,8 @@ export async function POST(req: Request) {
                         set: updateData
                     })
                     .returning();
+
+                newTopic = insertedTopic;
 
                 // Save Chapters
                 await db.delete(chapters).where(eq(chapters.topicId, newTopic.id));
@@ -277,53 +281,56 @@ export async function POST(req: Request) {
             // 4. Retroactive Parenting: Adopt existing topics that belong to this new one
             // If "Western Philosophy" is created, find topics that have "Western Philosophy" in their tags
             // and move them to be children of this new topic.
-            try {
-                // Determine potential tag variations to match (e.g. "Western Philosophy", "western philosophy")
-                // JSON search is case-sensitive usually, but we can do a text search on the JSON column
-                const searchTerm = `%${topic}%`;
+            if (newTopic) {
+                try {
+                    // Determine potential tag variations to match (e.g. "Western Philosophy", "western philosophy")
+                    // JSON search is case-sensitive usually, but we can do a text search on the JSON column
+                    const searchTerm = `%${topic}%`;
 
-                // Find potential children: Topics where syllabus contains the name of the NEW topic
-                // AND who do not already have a stricter parent (optional: or just steal them?)
-                // Let's steal them for now to enforce the new structure.
+                    // Find potential children: Topics where syllabus contains the name of the NEW topic
+                    // AND who do not already have a stricter parent (optional: or just steal them?)
+                    // Let's steal them for now to enforce the new structure.
 
-                // Note: This matches any topic whose syllabus string contains the topic name. 
-                // Could be in description, but likely as a tag.
-                // Ideally we query syllabus->'tags' but simple LIKE is safer for now.
-                const potentialChildren = await db.query.topics.findMany({
-                    where: (t, { sql }) => sql`${t.syllabus}::text ILIKE ${searchTerm} AND ${t.id} != ${newTopic.id}`
-                });
+                    // Note: This matches any topic whose syllabus string contains the topic name. 
+                    // Could be in description, but likely as a tag.
+                    // Ideally we query syllabus->'tags' but simple LIKE is safer for now.
+                    const potentialChildren = await db.query.topics.findMany({
+                        where: (t, { sql }) => sql`${t.syllabus}::text ILIKE ${searchTerm} AND ${t.id} != ${newTopic.id}`
+                    });
 
-                for (const child of potentialChildren) {
-                    // 1. Check Tags
-                    const childTags: string[] = (child.syllabus as any)?.tags || [];
-                    const hasTag = childTags.some(t => t.toLowerCase() === topic.toLowerCase());
+                    for (const child of potentialChildren) {
+                        // 1. Check Tags
+                        const childTags: string[] = (child.syllabus as any)?.tags || [];
+                        const hasTag = childTags.some(t => t.toLowerCase() === topic.toLowerCase());
 
-                    // 2. Check Title (e.g. "Music Theory" contains "Music")
-                    // Be careful with short words (e.g. "Art" in "Earth"), so use regex word boundary or strict inclusion if length sufficient
-                    let titleMatch = false;
-                    if (topic.length > 3) {
-                        const regex = new RegExp(`\\b${topic}\\b`, 'i');
-                        titleMatch = regex.test(child.title);
+                        // 2. Check Title (e.g. "Music Theory" contains "Music")
+                        // Be careful with short words (e.g. "Art" in "Earth"), so use regex word boundary or strict inclusion if length sufficient
+                        let titleMatch = false;
+                        if (topic.length > 3) {
+                            const regex = new RegExp(`\\b${topic}\\b`, 'i');
+                            titleMatch = regex.test(child.title);
+                        }
+
+                        if (hasTag || titleMatch) {
+                            // Check if we should adopt it. 
+                            // If it's currently at Root, definitely adopt.
+                            // If it's under "Religion" and we are "Western Philosophy" (which is under Religion), 
+                            // then we are MORE SPECIFIC, so we should adopt.
+                            // We assume the new topic is "closer" because it matches a tag directly.
+
+                            console.log(`[API] Retroactive Parenting: Adopting child "${child.title}" into "${newTopic.title}" (Match: ${hasTag ? 'Tag' : 'Title'})`);
+                            await db.update(topics)
+                                .set({ parentId: newTopic.id })
+                                .where(eq(topics.id, child.id));
+                        }
                     }
 
-                    if (hasTag || titleMatch) {
-                        // Check if we should adopt it. 
-                        // If it's currently at Root, definitely adopt.
-                        // If it's under "Religion" and we are "Western Philosophy" (which is under Religion), 
-                        // then we are MORE SPECIFIC, so we should adopt.
-                        // We assume the new topic is "closer" because it matches a tag directly.
-
-                        console.log(`[API] Retroactive Parenting: Adopting child "${child.title}" into "${newTopic.title}" (Match: ${hasTag ? 'Tag' : 'Title'})`);
-                        await db.update(topics)
-                            .set({ parentId: newTopic.id })
-                            .where(eq(topics.id, child.id));
-                    }
+                } catch (err) {
+                    console.error("[API] Retroactive Parenting Error:", err);
                 }
+            } // Close if(newTopic)
 
-            } catch (err) {
-                console.error("[API] Retroactive Parenting Error:", err);
-            }
-        },
+        }, // Close onFinish
     });
 
     return result.toTextStreamResponse();

@@ -15,6 +15,7 @@ interface WikiChapterProps {
         slug: string;
         content?: string | null;
         description?: string | null;
+        images?: string[] | null;
     };
     topicId: string;
     index: number;
