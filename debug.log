@@ -1,0 +1,42 @@
+[2025-12-11T03:11:47.615Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/tsconfig.json, languageId: json
+[2025-12-11T03:18:15.715Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/globals.css, languageId: css
+[2025-12-11T03:18:31.233Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/globals.css, languageId: css
+[2025-12-11T03:18:32.927Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/globals.css, languageId: css
+[2025-12-11T03:18:34.477Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/layout.tsx, languageId: typescriptreact
+[2025-12-11T03:18:35.001Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/page.tsx, languageId: typescriptreact
+[2025-12-11T03:18:58.572Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/globals.css, languageId: css
+[2025-12-11T03:20:01.159Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/globals.css, languageId: css
+[2025-12-11T03:21:35.690Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/globals.css, languageId: css
+[2025-12-11T03:31:12.736Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/manual/page.tsx, languageId: typescriptreact
+[2025-12-11T03:37:29.641Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/manual/page.tsx, languageId: typescriptreact
+[2025-12-11T03:54:59.362Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/page.tsx, languageId: typescriptreact
+[2025-12-11T03:56:30.298Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/debug.log, languageId: plaintext
+[2025-12-11T04:00:49.464Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/.env, languageId: plaintext
+[2025-12-11T04:00:59.305Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/.env.local, languageId: plaintext
+[2025-12-11T04:01:09.523Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T04:01:32.343Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T04:01:48.641Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/.env.local, languageId: plaintext
+[2025-12-11T04:01:59.235Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/page.tsx, languageId: typescriptreact
+[2025-12-11T04:10:06.308Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T04:21:23.385Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T04:21:23.465Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T05:18:58.773Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/api/chat/route.ts, languageId: typescript
+[2025-12-11T05:21:25.017Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/page.tsx, languageId: typescriptreact
+[2025-12-11T05:21:25.048Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/page.tsx, languageId: typescriptreact
+[2025-12-11T05:38:17.115Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T05:39:28.862Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/page.tsx, languageId: typescriptreact
+[2025-12-11T05:39:43.690Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T05:43:02.002Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T05:46:23.795Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T05:46:23.964Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T05:47:01.781Z] [Main] lsp:completion called for file:///Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx at {"line":0,"character":11}
+[2025-12-11T05:47:01.784Z] [Main] LSPClient returned 0 items
+[2025-12-11T05:47:01.886Z] [Main] VSCodeAPI returned 2 items
+[2025-12-11T05:47:01.886Z] [Main] Total completion items before sanitization: 2
+[2025-12-11T05:47:01.887Z] [Main] Sanitization complete. Returning 2 items.
+[2025-12-11T05:51:53.745Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T05:51:53.819Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T05:51:53.882Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T05:51:56.723Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact
+[2025-12-11T05:51:56.766Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/page.tsx, languageId: typescriptreact
+[2025-12-11T06:04:18.770Z] [Renderer] [Editor] Setup LSP for /Users/vegarberentsen/antigravity/src/app/learn/[topic]/page.tsx, languageId: typescriptreact

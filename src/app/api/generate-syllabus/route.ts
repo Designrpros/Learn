@@ -1,0 +1,330 @@
+import { streamObject } from 'ai';
+import { z } from 'zod';
+import { defaultModel } from '@/lib/ai-config';
+import { db } from '@/db';
+import { topics, chapters, relationships } from '@/db/schema';
+import { logActivity } from '@/lib/db-queries';
+import { eq } from 'drizzle-orm';
+import { NextResponse } from 'next/server';
+
+export const maxDuration = 30;
+
+import { WIKI_OUTLINE_CONSTRAINT } from '@/lib/ai-constraints';
+import { syllabusSchema } from '@/lib/schemas';
+
+function slugify(text: string) {
+    return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+}
+
+export async function POST(req: Request) {
+    const input = await req.json();
+    let { topic, force } = input;
+    const { topicId } = input;
+
+    // Validate Input
+    if (!topic && !topicId) {
+        return new NextResponse("Missing 'topic' or 'topicId'", { status: 400 });
+    }
+
+    // Resolve Topic Name if missing
+    if (!topic && topicId) {
+        const dbTopic = await db.query.topics.findFirst({
+            where: eq(topics.id, topicId),
+        });
+        if (dbTopic) {
+            topic = dbTopic.title;
+        } else {
+            return new NextResponse("Topic not found", { status: 404 });
+        }
+    }
+
+    if (typeof topic !== 'string') {
+        return new NextResponse("Invalid topic format", { status: 400 });
+    }
+
+    const slug = slugify(topic);
+
+
+
+    // 1. Check Cache (Skip if force=true)
+    if (!force) {
+        try {
+            const existingTopic = await db.query.topics.findFirst({
+                where: eq(topics.slug, slug),
+            });
+
+            if (existingTopic && existingTopic.syllabus) {
+                console.log(`[API] Cache Hit for "${topic}". Returning saved syllabus.`);
+                return NextResponse.json(existingTopic.syllabus);
+            }
+        } catch (err) {
+            console.error("[API] DB Read Error:", err);
+        }
+    } else {
+        console.log(`[API] Forced Regeneration requested for "${topic}"`);
+    }
+
+    // 2. Generate and Save
+    console.log(`[API] Cache Miss. Generating new syllabus...`);
+
+    const result = await streamObject({
+        model: defaultModel,
+        schema: syllabusSchema,
+        // Constraint: Title must be concise.
+        system: `You are a high-quality academic knowledge generator. 
+    Design a bespoke curriculum for the user's requested topic.
+    The tone should be intellectual, warm, and structured.
+    
+    IMPORTANT: The 'title' field must be EXACTLY the topic name requested, or a very short variation. 
+    DO NOT add subtitles, colons, or flowery descriptions.
+
+    STRICT HIERARCHY RULE:
+    You must classify this topic within the existing knowledge tree.
+    In your 'tags', you MUST include the path from the broadest category down to the specific field.
+    Example: for "Linear Algebra", tags should be ["Mathematics", "Algebra", "Linear Algebra"].
+    Example: for "Impressionism", tags should be ["Art", "Art History", "Modern Art", "Impressionism"].
+    
+    ${WIKI_OUTLINE_CONSTRAINT}
+    
+    Start with a "Course Overview" that serves as an objective encyclopedia entry.
+    Start immediately with the topic definition. 
+    DO NOT introduce yourself. 
+    DO NOT mention "Peak Learn".
+    Then create a logical flow of chapters.
+    Finally, suggest related topics to expand the student's learning map.`,
+        prompt: `Topic: ${topic}`,
+        onFinish: async ({ object }) => {
+            if (!object) return;
+            console.log(`[API] Syllabus Generation Completed. Saving to DB...`);
+
+            // Sanitize Title: Use User's Topic if match is close, or strip subtitles from AI title
+            let finalTitle = object.title || topic;
+            if (finalTitle.includes(':')) {
+                finalTitle = finalTitle.split(':')[0].trim();
+                console.log(`[API] Sanitized title from "${object.title}" to "${finalTitle}"`);
+            }
+            // Prefer user's original casing/phrasing if it's a match? 
+            // Actually, let's trust the sanitized AI title but fallback to topic if AI went wild.
+            if (finalTitle.length > topic.length + 10) {
+                finalTitle = topic; // Revert to user input if AI title is still too long
+            }
+
+            // 1. Resolve Parent Hierarchy from Tags (Auto-Categorization)
+            // Schema: tags = ['Science', 'Physics'] -> implying Science > Physics > [Topic]
+            let resolvedParentId = null;
+
+            // REVERT: We do NOT force isCategory to be root. 
+            // A category (e.g. "Western Philosophy") can still be under another (e.g. "Religion").
+            // Being a "folder" comes from having children, which we handle via Retroactive Parenting below.
+
+            if (object.tags && object.tags.length > 0) {
+                console.log(`[DEBUG] Processing tags for auto-categorization:`, object.tags);
+                // We assume tags are ordered from Broadest -> Specific.
+                // We want to attach to the most specific EXISTING topic.
+                // iterate backwards.
+                for (let i = object.tags.length - 1; i >= 0; i--) {
+                    const tag = object.tags[i];
+                    const tagSlug = slugify(tag);
+
+                    // Prevent self-referencing (Topic cannot be its own parent)
+                    if (tagSlug === slug) {
+                        console.log(`[DEBUG] Skipping self-reference tag: ${tag}`);
+                        continue;
+                    }
+
+                    const existingParent = await db.query.topics.findFirst({
+                        where: eq(topics.slug, tagSlug)
+                    });
+
+                    if (existingParent) {
+                        resolvedParentId = existingParent.id;
+                        console.log(`[API] Auto-Categorized "${topic}" under "${existingParent.title}" (Source Tag: ${tag})`);
+                        break;
+                    } else {
+                        console.log(`[DEBUG] Tag "${tag}" (slug: ${tagSlug}) not found in DB. Skipping.`);
+                    }
+                }
+                if (!resolvedParentId) console.log(`[DEBUG] No matching parent found from tags. Topic will be at root.`);
+            }
+
+            try {
+                // Simulated User ID (TODO: Replace with Auth)
+                const currentUserId = "user_2qD5DQ5D5Q5D5Q5D5D5D5D5D5";
+
+                const updateData: any = {
+                    title: finalTitle,
+                    overview: object.courseOverview,
+                    syllabus: object,
+                    // If we are updating an existing topic, DO NOT overwrite creatorId if it exists?
+                    // actually, IF it's a stub (system created), maybe we claim it?
+                    // For now, let's set creatorId ONLY if it's new or we are the creator.
+                    // But `onConflictDoUpdate` handles conflicts.
+                    // Let's assume shared ownership or "last generated by".
+                    // Better: Only set creatorId on insert.
+                };
+
+                // Only update parentID if we found a valid new parent AND it's not self-referential
+                // ALSO: If we are updating, we shouldn't accidentally orphan it if we didn't find a new parent?
+                // But if we did find one, update it.
+                if (resolvedParentId) {
+                    // Double check we are not setting parent to self (should be caught by slug check above, but ID check is safer if topic renamed)
+                    // But we don't have newTopic.id yet if inserting.
+                    // Slug check is sufficient for insert.
+                    updateData.parentId = resolvedParentId;
+                }
+
+                // Force claim ownership if we are generating content for it
+                // This ensures it shows up in "Personal" view even if it was a system stub.
+                updateData.creatorId = currentUserId;
+                updateData.isPublic = true;
+
+                // Save Topic
+                const [newTopic] = await db.insert(topics).values({
+                    title: finalTitle,
+                    slug: slug,
+                    overview: (object.courseOverview || "") as string,
+                    parentId: resolvedParentId,
+                    syllabus: object,
+                    creatorId: currentUserId, // Mark as User Created
+                    isPublic: true,           // Default to Public/Global visibility
+                })
+                    .onConflictDoUpdate({
+                        target: topics.slug,
+                        set: updateData
+                    })
+                    .returning();
+
+                // Save Chapters
+                await db.delete(chapters).where(eq(chapters.topicId, newTopic.id));
+
+                if (object.chapters && object.chapters.length > 0) {
+                    await db.insert(chapters).values(
+                        object.chapters.map((ch, index) => ({
+                            topicId: newTopic.id,
+                            title: ch.title || "Untitled Chapter",
+                            slug: ch.id || slugify(ch.title || `ch-${index}`),
+                            content: null, // Content generated later
+                            description: ch.description, // Save summary
+                            order: index + 1,
+                        }))
+                    );
+                }
+
+                // REMOVED: Loop that inserted tags as children. 
+                // Tags are now used for PARENT resolution.
+
+                // Save Relationships
+                if (object.relatedTopics && object.relatedTopics.length > 0) {
+                    for (const rel of object.relatedTopics) {
+                        const targetSlug = slugify(rel.topic);
+
+                        // Upsert Target Topic (Stub) - At Root Level for unrelated?
+                        // actually relationships might be lateral, so keep them as root stubs (parentId: null) unless specified.
+                        // But tags are definitely children.
+                        let targetId: string;
+                        const existingTarget = await db.query.topics.findFirst({ where: eq(topics.slug, targetSlug) });
+
+                        if (existingTarget) {
+                            targetId = existingTarget.id;
+                        } else {
+                            try {
+                                const [stub] = await db.insert(topics).values({
+                                    title: rel.topic,
+                                    slug: targetSlug,
+                                    overview: "Autogenerated stub.",
+                                    syllabus: null,
+                                }).returning();
+                                targetId = stub.id;
+                            } catch (e) {
+                                // Race condition
+                                const retryTarget = await db.query.topics.findFirst({ where: eq(topics.slug, targetSlug) });
+                                if (retryTarget) targetId = retryTarget.id;
+                                else continue;
+                            }
+                        }
+
+                        // Create Edge
+                        try {
+                            const existingRel = await db.query.relationships.findFirst({
+                                where: (r, { and, eq: eqOp }) => and(
+                                    eqOp(r.sourceTopicId, newTopic.id),
+                                    eqOp(r.targetTopicId, targetId),
+                                    eqOp(r.type, rel.type)
+                                )
+                            });
+
+                            if (!existingRel) {
+                                await db.insert(relationships).values({
+                                    sourceTopicId: newTopic.id,
+                                    targetTopicId: targetId,
+                                    type: rel.type
+                                });
+                            }
+                        } catch (e) {
+                            console.error("Rel Insert Error", e);
+                        }
+                    }
+                }
+
+                console.log(`[API] Saved "${finalTitle}" to DB with ${object.chapters?.length} chapters.`);
+            } catch (err: any) {
+                console.error("[API] DB Write Error:", err);
+            }
+
+            // Log Activity
+            await logActivity(`Generated Syllabus: ${object?.title || topic}`, "GENERATION");
+
+            // 4. Retroactive Parenting: Adopt existing topics that belong to this new one
+            // If "Western Philosophy" is created, find topics that have "Western Philosophy" in their tags
+            // and move them to be children of this new topic.
+            try {
+                // Determine potential tag variations to match (e.g. "Western Philosophy", "western philosophy")
+                // JSON search is case-sensitive usually, but we can do a text search on the JSON column
+                const searchTerm = `%${topic}%`;
+
+                // Find potential children: Topics where syllabus contains the name of the NEW topic
+                // AND who do not already have a stricter parent (optional: or just steal them?)
+                // Let's steal them for now to enforce the new structure.
+
+                // Note: This matches any topic whose syllabus string contains the topic name. 
+                // Could be in description, but likely as a tag.
+                // Ideally we query syllabus->'tags' but simple LIKE is safer for now.
+                const potentialChildren = await db.query.topics.findMany({
+                    where: (t, { sql }) => sql`${t.syllabus}::text ILIKE ${searchTerm} AND ${t.id} != ${newTopic.id}`
+                });
+
+                for (const child of potentialChildren) {
+                    // 1. Check Tags
+                    const childTags: string[] = (child.syllabus as any)?.tags || [];
+                    const hasTag = childTags.some(t => t.toLowerCase() === topic.toLowerCase());
+
+                    // 2. Check Title (e.g. "Music Theory" contains "Music")
+                    // Be careful with short words (e.g. "Art" in "Earth"), so use regex word boundary or strict inclusion if length sufficient
+                    let titleMatch = false;
+                    if (topic.length > 3) {
+                        const regex = new RegExp(`\\b${topic}\\b`, 'i');
+                        titleMatch = regex.test(child.title);
+                    }
+
+                    if (hasTag || titleMatch) {
+                        // Check if we should adopt it. 
+                        // If it's currently at Root, definitely adopt.
+                        // If it's under "Religion" and we are "Western Philosophy" (which is under Religion), 
+                        // then we are MORE SPECIFIC, so we should adopt.
+                        // We assume the new topic is "closer" because it matches a tag directly.
+
+                        console.log(`[API] Retroactive Parenting: Adopting child "${child.title}" into "${newTopic.title}" (Match: ${hasTag ? 'Tag' : 'Title'})`);
+                        await db.update(topics)
+                            .set({ parentId: newTopic.id })
+                            .where(eq(topics.id, child.id));
+                    }
+                }
+
+            } catch (err) {
+                console.error("[API] Retroactive Parenting Error:", err);
+            }
+        },
+    });
+
+    return result.toTextStreamResponse();
+}

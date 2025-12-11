@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+:root {
+  /* Warm Paper (Light Mode) */
+  --background: 40 10% 97%; /* Stone 50-ish / Warm Paper */
+  --foreground: 24 10% 10%; /* Stone 900 */
+
+  --card: 0 0% 100%;
+  --card-foreground: 24 10% 10%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 24 10% 10%;
+
+  --primary: 24 10% 10%; /* Stone 900 */
+  --primary-foreground: 40 10% 97%;
+
+  --secondary: 40 6% 90%; /* Stone 200 */
+  --secondary-foreground: 24 10% 10%;
+
+  --muted: 40 6% 90%;
+  --muted-foreground: 25 5% 45%;
+
+  --accent: 40 6% 90%;
+  --accent-foreground: 24 10% 10%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 60 9.1% 97.8%;
+
+  --border: 40 6% 90%; /* Stone 200 */
+  --input: 40 6% 90%;
+  --ring: 24 5% 64%; /* Stone 400 */
+
+  --radius: 0.25rem; /* Sharper corners for paper feel */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Obsidian (Dark Mode) */
+    --background: 24 5% 6%; /* Stone 950 */
+    --foreground: 40 10% 94%; /* Stone 200 */
+
+    --card: 24 5% 6%;
+    --card-foreground: 40 10% 94%;
+
+    --popover: 24 5% 6%;
+    --popover-foreground: 40 10% 94%;
+
+    --primary: 40 10% 94%;
+    --primary-foreground: 24 5% 6%;
+
+    --secondary: 24 5% 18%; /* Stone 800 */
+    --secondary-foreground: 40 10% 94%;
+
+    --muted: 24 5% 18%;
+    --muted-foreground: 24 5% 64%;
+
+    --accent: 35 100% 30%; /* Amber/Gold touch */
+    --accent-foreground: 40 10% 94%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 40 10% 94%;
+
+    --border: 24 5% 18%;
+    --input: 24 5% 18%;
+    --ring: 35 90% 40%; /* Amber ring */
+  }
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-serif), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+}
