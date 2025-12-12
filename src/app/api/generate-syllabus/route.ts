@@ -1,5 +1,6 @@
 import { streamObject } from 'ai';
 import { z } from 'zod';
+import { WIKIPEDIA_OUTLINE } from "@/lib/wikipedia-outline";
 import { defaultModel } from '@/lib/ai-config';
 import { db } from '@/db';
 import { topics, chapters, relationships } from '@/db/schema';
@@ -67,6 +68,12 @@ export async function POST(req: Request) {
     // 2. Generate and Save
     console.log(`[API] Cache Miss. Generating new syllabus...`);
 
+    // Helper to flatten outline for context
+    const outlineContext = WIKIPEDIA_OUTLINE.map(root => {
+        const children = root.children?.map(c => c.title).join(", ");
+        return `- ${root.title}: [${children || ""}]`;
+    }).join("\n");
+
     const result = await streamObject({
         model: defaultModel,
         schema: syllabusSchema,
@@ -79,58 +86,45 @@ export async function POST(req: Request) {
     DO NOT add subtitles, colons, or flowery descriptions.
 
     STRICT HIERARCHY RULE:
-    You must classify this topic within the existing knowledge tree.
+    You must classify this topic within the existing knowledge tree provided below.
+    The topic must be placed under the most specific existing parent.
+    
+    EXISTING KNOWLEDGE TREE (Roots and Major Categories):
+    ${outlineContext}
+
     In your 'tags', you MUST include the path from the broadest category down to the specific field.
     Example: for "Linear Algebra", tags should be ["Mathematics", "Algebra", "Linear Algebra"].
-    Example: for "Impressionism", tags should be ["Art", "Art History", "Modern Art", "Impressionism"].
     
     ${WIKI_OUTLINE_CONSTRAINT}
     
     Start with a "Course Overview" that serves as an objective encyclopedia entry.
     Start immediately with the topic definition. 
     DO NOT introduce yourself. 
-    DO NOT mention "Peak Learn".
     Then create a logical flow of chapters.
-    Finally, suggest related topics to expand the student's learning map.`,
+    Finally, suggest related topics.`,
         prompt: `Topic: ${topic}`,
         onFinish: async ({ object }) => {
             if (!object) return;
             console.log(`[API] Syllabus Generation Completed. Saving to DB...`);
 
-            // Sanitize Title: Use User's Topic if match is close, or strip subtitles from AI title
+            // Sanitize Title
             let finalTitle = object.title || topic;
             if (finalTitle.includes(':')) {
                 finalTitle = finalTitle.split(':')[0].trim();
-                console.log(`[API] Sanitized title from "${object.title}" to "${finalTitle}"`);
             }
-            // Prefer user's original casing/phrasing if it's a match? 
-            // Actually, let's trust the sanitized AI title but fallback to topic if AI went wild.
             if (finalTitle.length > topic.length + 10) {
-                finalTitle = topic; // Revert to user input if AI title is still too long
+                finalTitle = topic;
             }
 
-            // 1. Resolve Parent Hierarchy from Tags (Auto-Categorization)
-            // Schema: tags = ['Science', 'Physics'] -> implying Science > Physics > [Topic]
+            // 1. Resolve Parent Hierarchy
             let resolvedParentId = null;
 
-            // REVERT: We do NOT force isCategory to be root. 
-            // A category (e.g. "Western Philosophy") can still be under another (e.g. "Religion").
-            // Being a "folder" comes from having children, which we handle via Retroactive Parenting below.
-
             if (object.tags && object.tags.length > 0) {
-                console.log(`[DEBUG] Processing tags for auto-categorization:`, object.tags);
-                // We assume tags are ordered from Broadest -> Specific.
-                // We want to attach to the most specific EXISTING topic.
-                // iterate backwards.
+                // Strategy A: Database Lookup (Existing Topics)
                 for (let i = object.tags.length - 1; i >= 0; i--) {
                     const tag = object.tags[i];
                     const tagSlug = slugify(tag);
-
-                    // Prevent self-referencing (Topic cannot be its own parent)
-                    if (tagSlug === slug) {
-                        console.log(`[DEBUG] Skipping self-reference tag: ${tag}`);
-                        continue;
-                    }
+                    if (tagSlug === slug) continue;
 
                     const existingParent = await db.query.topics.findFirst({
                         where: eq(topics.slug, tagSlug)
@@ -138,14 +132,50 @@ export async function POST(req: Request) {
 
                     if (existingParent) {
                         resolvedParentId = existingParent.id;
-                        console.log(`[API] Auto-Categorized "${topic}" under "${existingParent.title}" (Source Tag: ${tag})`);
+                        console.log(`[API] Parenting Strategy A: Found DB match "${existingParent.title}" for tag "${tag}"`);
                         break;
-                    } else {
-                        console.log(`[DEBUG] Tag "${tag}" (slug: ${tagSlug}) not found in DB. Skipping.`);
                     }
                 }
-                console.log(`[DEBUG] No matching parent found from tags. Topic will be at root.`);
             }
+
+            // Strategy B: Strict Outline Fallback (If no DB match found)
+            if (!resolvedParentId) {
+                console.log(`[API] Parenting Strategy A failed. Trying Strategy B (Outline Fuzzy Match)...`);
+                // Try to match tags against the WIKIPEDIA_OUTLINE titles directly
+                // This ensures that if the DB is missing a node but it IS in the outline (and thus should be in DB as a seed),
+                // we might be able to find it if we search by title instead of exact slug match?
+                // Or rather, if the AI says tag is "Maths" but DB has "Mathematics".
+
+                // Let's implement a simple "Best Text Match" against root topics.
+                for (const root of WIKIPEDIA_OUTLINE) {
+                    // Check if any tag matches this root title
+                    if (object.tags?.some(t => t.toLowerCase().includes(root.title.toLowerCase()) || root.title.toLowerCase().includes(t.toLowerCase()))) {
+                        // Verify it exists in DB
+                        const rootInDb = await db.query.topics.findFirst({ where: eq(topics.slug, slugify(root.title)) });
+                        if (rootInDb) {
+                            resolvedParentId = rootInDb.id;
+                            console.log(`[API] Parenting Strategy B: Matched Root "${root.title}"`);
+                            break;
+                        }
+                    }
+                    // Check level 2
+                    if (root.children) {
+                        for (const child of root.children) {
+                            if (object.tags?.some(t => t.toLowerCase() === child.title.toLowerCase())) {
+                                const childInDb = await db.query.topics.findFirst({ where: eq(topics.slug, slugify(child.title)) });
+                                if (childInDb) {
+                                    resolvedParentId = childInDb.id;
+                                    console.log(`[API] Parenting Strategy B: Matched Child "${child.title}"`);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (resolvedParentId) break;
+                }
+            }
+
+            if (!resolvedParentId) console.log(`[DEBUG] No matching parent found. Topic will be at root (or manual clean up required).`);
 
             let newTopic: any = null;
 
