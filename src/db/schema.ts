@@ -92,6 +92,7 @@ export const threads = pgTable('threads', {
 export const threadsRelations = relations(threads, ({ many, one }) => ({
     posts: many(posts),
     tags: many(threadTags),
+    votes: many(threadVotes),
     topic: one(topics, {
         fields: [threads.topicId],
         references: [topics.id],
@@ -143,6 +144,21 @@ export const threadTagsRelations = relations(threadTags, ({ one }) => ({
         fields: [threadTags.tagId],
         references: [tags.id],
     }),
+}));
+
+export const threadVotes = pgTable('thread_votes', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    threadId: uuid('thread_id').references(() => threads.id, { onDelete: 'cascade' }).notNull(),
+    userId: text('user_id').notNull(), // Clerk ID
+    value: integer('value').notNull(), // 1 or -1
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const threadVotesRelations = relations(threadVotes, ({ one }) => ({
+    thread: one(threads, {
+        fields: [threadVotes.threadId],
+        references: [threads.id],
+    })
 }));
 
 // --- EVENTS ---

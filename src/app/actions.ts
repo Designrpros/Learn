@@ -1,10 +1,11 @@
 'use server';
 
 import { db } from '@/db';
-import { threads, posts, threadTags, tags } from '@/db/schema';
+import { threads, posts, threadTags, tags, threadVotes } from '@/db/schema';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { eq } from 'drizzle-orm';
 
 export async function createThread(formData: FormData) {
     const { userId } = await auth();
@@ -50,7 +51,7 @@ export async function createThread(formData: FormData) {
         // Let's stick to the generic thread detail for now, or consider /wiki/[slug]/forum/thread/[id]?
         // The current routes are /forum/[threadId]. Let's keep it simple.
     }
-    redirect(`/forum/${newThread.id}`);
+    redirect(`/forum/thread/${newThread.id}`);
 }
 
 export async function createPost(formData: FormData) {
@@ -75,5 +76,40 @@ export async function createPost(formData: FormData) {
         authorName: user.fullName || user.username || 'Anonymous',
     });
 
-    revalidatePath(`/forum/${threadId}`);
+    revalidatePath(`/forum/thread/${threadId}`);
+}
+
+export async function toggleVote(threadId: string, value: 1 | -1) {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    // Check existing vote
+    const existingVote = await db.query.threadVotes.findFirst({
+        where: (votes, { and, eq }) => and(
+            eq(votes.threadId, threadId),
+            eq(votes.userId, userId)
+        )
+    });
+
+    if (existingVote) {
+        if (existingVote.value === value) {
+            // Toggle off (remove vote)
+            await db.delete(threadVotes).where(eq(threadVotes.id, existingVote.id));
+        } else {
+            // Change vote
+            await db.update(threadVotes)
+                .set({ value })
+                .where(eq(threadVotes.id, existingVote.id));
+        }
+    } else {
+        // Create new vote
+        await db.insert(threadVotes).values({
+            threadId,
+            userId,
+            value
+        });
+    }
+
+    revalidatePath('/forum');
+    revalidatePath(`/forum/thread/${threadId}`);
 }

@@ -4,9 +4,16 @@ import { useUIStore } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
 import { Sidebar, Activity, House, Map as MapIcon, BookOpen, Layers, PanelRight } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function BottomDock() {
     const { isSidebarOpen, setSidebarOpen, isInspectorOpen, setInspectorOpen, centerActions } = useUIStore();
+    const pathname = usePathname();
+
+    const isActive = (path: string) => {
+        if (path === '/') return pathname === '/';
+        return pathname?.startsWith(path);
+    }
 
     return (
         <>
@@ -30,10 +37,22 @@ export function BottomDock() {
 
                     {/* Group 1: Explore */}
                     <div className="flex items-center gap-1">
-                        <Link href="/" className="p-2 text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-full transition-all" title="Home">
+                        <Link href="/"
+                            className={cn(
+                                "p-2 rounded-full transition-all",
+                                isActive('/') ? "text-foreground bg-muted" : "text-muted-foreground hover:text-primary hover:bg-muted/50"
+                            )}
+                            title="Home"
+                        >
                             <House className="w-5 h-5" />
                         </Link>
-                        <Link href="/map" className="p-2 text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-full transition-all" title="Map">
+                        <Link href="/map"
+                            className={cn(
+                                "p-2 rounded-full transition-all",
+                                isActive('/map') ? "text-foreground bg-muted" : "text-muted-foreground hover:text-primary hover:bg-muted/50"
+                            )}
+                            title="Map"
+                        >
                             <MapIcon className="w-5 h-5" />
                         </Link>
                     </div>
@@ -49,10 +68,22 @@ export function BottomDock() {
 
                     {/* Group 2: Knowledge */}
                     <div className="flex items-center gap-1">
-                        <Link href="/forum" className="p-2 text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-full transition-all" title="Forum">
+                        <Link href="/forum"
+                            className={cn(
+                                "p-2 rounded-full transition-all",
+                                isActive('/forum') ? "text-foreground bg-muted" : "text-muted-foreground hover:text-primary hover:bg-muted/50"
+                            )}
+                            title="Forum"
+                        >
                             <BookOpen className="w-5 h-5" />
                         </Link>
-                        <Link href="/wiki" className="p-2 text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-full transition-all" title="Wiki">
+                        <Link href="/wiki"
+                            className={cn(
+                                "p-2 rounded-full transition-all",
+                                isActive('/wiki') ? "text-foreground bg-muted" : "text-muted-foreground hover:text-primary hover:bg-muted/50"
+                            )}
+                            title="Wiki"
+                        >
                             <Layers className="w-5 h-5" />
                         </Link>
                     </div>

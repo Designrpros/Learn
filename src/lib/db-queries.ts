@@ -1,6 +1,6 @@
 import { db } from '@/db';
-import { topics, chapters, events, threads, posts, threadTags, faqs } from '@/db/schema';
-import { eq, asc, desc, isNull } from 'drizzle-orm';
+import { topics, chapters, events, threads, posts, threadTags, faqs, threadVotes } from '@/db/schema';
+import { eq, asc, desc, isNull, sql, ilike, and, inArray, or } from 'drizzle-orm';
 
 export const revalidate = 0; // Ensure fresh data fetching
 
@@ -8,8 +8,8 @@ export async function getAllTopics(searchQuery?: string) {
     if (searchQuery) {
         return await db.query.topics.findMany({
             where: (topics, { ilike, or }) => or(
-                ilike(topics.title, `%${searchQuery}%`),
-                ilike(topics.overview, `%${searchQuery}%`)
+                ilike(topics.title, `% ${searchQuery}% `),
+                ilike(topics.overview, `% ${searchQuery}% `)
             ),
             orderBy: [asc(topics.title)],
             columns: {
@@ -199,35 +199,69 @@ export async function getThreadsByTopic(topicId: string) {
             },
             posts: {
                 columns: {
-                    id: true
+                    id: true,
+                    content: true
                 }
             }
         }
     });
 }
 
-export async function getThreads(category?: string, searchQuery?: string) {
-    const filters = [];
-    if (category) filters.push(eq(threads.category, category));
+export async function getThreads(category?: string, searchQuery?: string, sortBy: 'new' | 'popular' | 'unanswered' = 'new', limit: number = 10, offset: number = 0) {
+    // 1. First, fetch the IDs of threads that match criteria, sorted correctly.
+    // We use the simpler Query Builder here because Relational Query API doesn't support complex aggregation/sorting easily.
 
-    // Manual search query construction since we need helper functions from 'where' callback
-    // But direct array 'and' is cleaner
-    // However, Drizzle's 'ilike' usually needs to come from the callback arg in 'findMany'
+    // Base conditions
+    const conditions = [];
+    if (category) conditions.push(eq(threads.category, category));
+    if (searchQuery) conditions.push(ilike(threads.title, `%${searchQuery}%`));
 
-    // Strategy: Use the findMany 'where' callback completely
-    return await db.query.threads.findMany({
-        where: (threads, { eq, and, ilike, or }) => {
-            const conditions = [];
-            if (category) conditions.push(eq(threads.category, category));
-            if (searchQuery) {
-                conditions.push(or(
-                    ilike(threads.title, `%${searchQuery}%`)
-                ));
-            }
-            return and(...conditions);
-        },
-        orderBy: [desc(threads.createdAt)],
+    let query = db.select({
+        id: threads.id,
+        // We need these for sorting/filtering in the group by
+        createdAt: threads.createdAt,
+    })
+        .from(threads)
+        .leftJoin(posts, eq(threads.id, posts.threadId))
+        .leftJoin(threadVotes, eq(threads.id, threadVotes.threadId))
+        .where(and(...conditions))
+        .groupBy(threads.id)
+        .limit(limit)
+        .offset(offset);
+
+    // Apply Sort/Filter specific logic
+    if (sortBy === 'unanswered') {
+        // Unanswered = Only 1 post (the OP) or 0 replies.
+        // Assuming every thread has at least 1 post (OP).
+        query.having(sql`count(${posts.id}) <= 1`);
+        query.orderBy(desc(threads.createdAt));
+    } else if (sortBy === 'popular') {
+        // Sort by vote sum
+        query.orderBy(sql`sum(coalesce(${threadVotes.value}, 0)) desc`, desc(threads.createdAt));
+    } else {
+        // Default 'new'
+        query.orderBy(desc(threads.createdAt));
+    }
+
+    // Execute ID fetch
+    const results = await query;
+
+    if (results.length === 0) {
+        return [];
+    }
+
+    const threadIds = results.map(r => r.id);
+
+    // 2. Fetch full data for these IDs using Relational API (to get nested objects easily)
+    const data = await db.query.threads.findMany({
+        where: inArray(threads.id, threadIds),
         with: {
+            topic: {
+                columns: {
+                    title: true,
+                    slug: true
+                }
+            },
             tags: {
                 with: {
                     tag: true
@@ -235,17 +269,36 @@ export async function getThreads(category?: string, searchQuery?: string) {
             },
             posts: {
                 columns: {
-                    id: true // just for counting
+                    id: true,
+                    content: true
+                }
+            },
+            votes: {
+                columns: {
+                    userId: true,
+                    value: true
                 }
             }
         }
     });
+
+    // 3. Re-sort the data to match the ID order (since findMany/inArray doesn't preserve order)
+    const orderMap = new Map(threadIds.map((id, index) => [id, index]));
+    data.sort((a, b) => (orderMap.get(a.id) || 0) - (orderMap.get(b.id) || 0));
+
+    return data;
 }
 
 export async function getThreadById(threadId: string) {
     return await db.query.threads.findFirst({
         where: eq(threads.id, threadId),
         with: {
+            topic: {
+                columns: {
+                    title: true,
+                    slug: true
+                }
+            },
             posts: {
                 orderBy: [asc(posts.createdAt)],
                 with: {
@@ -270,18 +323,64 @@ export async function searchTopics(query: string) {
     // Simple ILIKE search for now
     const results = await db.query.topics.findMany({
         where: (topics, { ilike, or }) => or(
-            ilike(topics.title, `%${query}%`),
-            ilike(topics.overview, `%${query}%`)
+            ilike(topics.title, `% ${query}% `),
+            ilike(topics.overview, `% ${query}% `)
         ),
         limit: 5,
         columns: {
             id: true,
             title: true,
             slug: true,
+            overview: true,
         }
     });
 
     return results;
+}
+
+export async function getTrendingTopics(limit = 5) {
+    // Honest "Trending": Topics with the most recent activity (newest threads).
+    // 1. Get recent threads with topicIds
+    const recentThreads = await db.query.threads.findMany({
+        where: (threads, { isNotNull }) => isNotNull(threads.topicId),
+        orderBy: [desc(threads.createdAt)],
+        limit: 20, // Fetch a batch to find unique topics
+        columns: {
+            topicId: true
+        }
+    });
+
+    // 2. Extract unique topic IDs (maintain order of recency)
+    const uniqueTopicIds = Array.from(new Set(recentThreads.map(t => t.topicId).filter(Boolean))) as string[];
+    const topTopicIds = uniqueTopicIds.slice(0, limit);
+
+    if (topTopicIds.length === 0) return [];
+
+    // 3. Fetch topic details
+    return await db.query.topics.findMany({
+        where: (topics, { inArray }) => inArray(topics.id, topTopicIds),
+        columns: {
+            title: true,
+            slug: true
+        }
+    });
+}
+
+export async function getForumStats() {
+    // Real counts
+    const threadsCount = await db.select({ count: threads.id }).from(threads);
+    const postsCount = await db.select({ count: posts.id }).from(posts);
+
+    // Estimate unique members from authors
+    const uniqueCheck = await db.execute(sql`SELECT COUNT(DISTINCT author_id) as count FROM posts`);
+    const memberCount = Number(uniqueCheck[0]?.count) || 1; // At least System
+
+    return {
+        threads: threadsCount.length,
+        posts: postsCount.length,
+        members: memberCount,
+        online: 1 // Just me for now (honest!) or maybe random low number
+    };
 }
 
 export async function getWikiFilters() {

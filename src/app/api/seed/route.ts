@@ -24,13 +24,25 @@ async function insertTopicRecursive(item: OutlineItem, parentId: string | null =
 
     // 2. Insert dummy thread (Wikits/Sub feature verification)
     if (Math.random() > 0.3) { // 70% chance to have a thread
-        await db.insert(threads).values({
+        const [thread] = await db.insert(threads).values({
             topicId: newTopic.id,
-            title: `Discussion: ${item.title}`,
+            title: item.title,
             category: "General",
             authorName: "System",
             createdAt: new Date(),
-        });
+        }).returning();
+
+        // Insert initial post acting as the description/overview
+        if (thread) {
+            await db.insert(posts).values({
+                threadId: thread.id,
+                topicId: newTopic.id,
+                content: `Welcome to the community discussion for **${item.title}**. This space is dedicated to sharing knowledge, asking questions, and collaborating on topics related to ${item.title}.`,
+                authorName: "System",
+                authorId: "system",
+                createdAt: new Date(),
+            });
+        }
     }
 
     // 3. Recursively insert children
