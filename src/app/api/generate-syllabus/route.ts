@@ -271,26 +271,38 @@ export async function POST(req: Request) {
                                 if (dbParent) {
                                     relParentId = dbParent.id;
                                 } else {
-                                    // 2. Try Outline Match (Simple Root check)
-                                    // If AI suggests "Science", but we haven't seeded Science yet (unlikely), we might miss it.
-                                    // But assuming Seeds exist.
-                                    // If suggested parent is NOT in DB, we leave it null (Root) -> effectively "Uncategorized" until resolved later.
-                                    // Or we could create the Category Stub? 
-                                    // Let's create the Category Stub if it's a Root.
-                                    const rootMatch = WIKIPEDIA_OUTLINE.find(r => r.title.toLowerCase() === rel.suggestedParent?.toLowerCase());
-                                    if (rootMatch) {
-                                        // Create the missing Root Category
+                                    // 2. Try Outline Match (Deep Search)
+                                    // Check Roots
+                                    let outlineMatch: any = WIKIPEDIA_OUTLINE.find(r => r.title.toLowerCase() === rel.suggestedParent?.toLowerCase());
+                                    let isRoot = true;
+
+                                    if (!outlineMatch) {
+                                        // Check Children
+                                        for (const r of WIKIPEDIA_OUTLINE) {
+                                            if (r.children) {
+                                                const child = r.children.find(c => c.title.toLowerCase() === rel.suggestedParent?.toLowerCase());
+                                                if (child) {
+                                                    outlineMatch = child;
+                                                    isRoot = false;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    if (outlineMatch) {
+                                        // Create the missing Category Stub
                                         try {
                                             const [newCat] = await db.insert(topics).values({
-                                                title: rootMatch.title,
-                                                slug: slugify(rootMatch.title),
+                                                title: outlineMatch.title,
+                                                slug: slugify(outlineMatch.title),
                                                 overview: "Category",
                                                 isPublic: true,
                                                 creatorId: null
                                             }).returning();
                                             relParentId = newCat.id;
                                         } catch (e) {
-                                            const retry = await db.query.topics.findFirst({ where: eq(topics.slug, slugify(rootMatch.title)) });
+                                            const retry = await db.query.topics.findFirst({ where: eq(topics.slug, slugify(outlineMatch.title)) });
                                             if (retry) relParentId = retry.id;
                                         }
                                     }
