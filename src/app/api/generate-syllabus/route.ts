@@ -275,6 +275,7 @@ export async function POST(req: Request) {
                                     // Check Roots
                                     let outlineMatch: any = WIKIPEDIA_OUTLINE.find(r => r.title.toLowerCase() === rel.suggestedParent?.toLowerCase());
                                     let isRoot = true;
+                                    let parentRoot: any = null;
 
                                     if (!outlineMatch) {
                                         // Check Children
@@ -284,6 +285,7 @@ export async function POST(req: Request) {
                                                 if (child) {
                                                     outlineMatch = child;
                                                     isRoot = false;
+                                                    parentRoot = r; // Capture the Grandparent
                                                     break;
                                                 }
                                             }
@@ -291,16 +293,56 @@ export async function POST(req: Request) {
                                     }
 
                                     if (outlineMatch) {
-                                        // Create the missing Category Stub
                                         try {
-                                            const [newCat] = await db.insert(topics).values({
-                                                title: outlineMatch.title,
-                                                slug: slugify(outlineMatch.title),
-                                                overview: "Category",
-                                                isPublic: true,
-                                                creatorId: null
-                                            }).returning();
-                                            relParentId = newCat.id;
+                                            let parentIdForCategory: string | null = null;
+
+                                            // If it's a Sub-Category (e.g. Medicine), ensure its Parent (Health) exists first
+                                            if (!isRoot && parentRoot) {
+                                                const rootSlug = slugify(parentRoot.title);
+                                                const dbRoot = await db.query.topics.findFirst({ where: eq(topics.slug, rootSlug) });
+
+                                                if (dbRoot) {
+                                                    parentIdForCategory = dbRoot.id;
+                                                } else {
+                                                    // Create the Root Category
+                                                    const [newRoot] = await db.insert(topics).values({
+                                                        title: parentRoot.title,
+                                                        slug: rootSlug,
+                                                        overview: "Category",
+                                                        isPublic: true,
+                                                        creatorId: null
+                                                    }).returning();
+                                                    parentIdForCategory = newRoot.id;
+                                                }
+                                            }
+
+                                            // Now Create/Find the Matched Category (e.g. Medicine or Health)
+                                            // If match was Root, parentIdForCategory is null (correct).
+                                            // If match was Child, parentIdForCategory is the Root ID (correct).
+
+                                            // Check existence again just in case (race condition or simple existence)
+                                            const matchSlug = slugify(outlineMatch.title);
+                                            const existingMatch = await db.query.topics.findFirst({ where: eq(topics.slug, matchSlug) });
+
+                                            if (existingMatch) {
+                                                relParentId = existingMatch.id;
+                                                // TODO: Update its parentId if it's null? (Retroactive Fix)
+                                                // If we found it but it was an orphan, we should fix it now that we know its parent.
+                                                if (parentIdForCategory && !existingMatch.parentId) {
+                                                    await db.update(topics).set({ parentId: parentIdForCategory }).where(eq(topics.id, existingMatch.id));
+                                                }
+                                            } else {
+                                                const [newCat] = await db.insert(topics).values({
+                                                    title: outlineMatch.title,
+                                                    slug: matchSlug,
+                                                    overview: "Category",
+                                                    isPublic: true,
+                                                    creatorId: null,
+                                                    parentId: parentIdForCategory
+                                                }).returning();
+                                                relParentId = newCat.id;
+                                            }
+
                                         } catch (e) {
                                             const retry = await db.query.topics.findFirst({ where: eq(topics.slug, slugify(outlineMatch.title)) });
                                             if (retry) relParentId = retry.id;
