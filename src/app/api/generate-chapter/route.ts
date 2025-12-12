@@ -100,7 +100,7 @@ export async function POST(req: Request) {
     - HEADERS: Use H2 (##) for main sections, H3 (###) for subsections. Ensure a blank line before every header.
     - Aesthetics: Use *italics* for emphasis.
     - Content: Be substantive. Explain concepts clearly with examples.
-    - START IMMEDIATELY with the content. Do NOT introduce yourself or mention "Peak Learn".`;
+    - START IMMEDIATELY with the content. Do NOT introduce yourself or mention "Wikits".`;
 
     const userPrompt = `Teach the chapter "${chapterTitle}". Context from syllabus: ${context || ''}`;
 

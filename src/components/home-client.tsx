@@ -95,61 +95,69 @@ export function HomeClient() {
                         className="relative z-10 w-full max-w-2xl space-y-8 text-center"
                     >
                         <h1 className="text-4xl md:text-6xl font-serif font-medium tracking-tight text-primary drop-shadow-sm">
-                            Peak Learn
+                            Wikits
                         </h1>
 
                         <p className="text-lg md:text-xl text-muted-foreground font-sans font-light drop-shadow-sm">
                             What do you want to master today?
                         </p>
 
-                        <form onSubmit={handleSubmit} className="relative group max-w-lg mx-auto">
-                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none z-10">
-                                <Search className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <form onSubmit={handleSubmit} className={cn(
+                            "relative max-w-lg mx-auto transition-all duration-300 bg-background/80 backdrop-blur-xl border border-border shadow-lg",
+                            searchResults.length > 0 ? "rounded-[2rem]" : "rounded-full hover:shadow-xl focus-within:shadow-2xl focus-within:scale-105"
+                        )}>
+                            <div className="relative flex items-center z-20 pr-1.5">
+                                <div className="pl-4 flex items-center pointer-events-none text-muted-foreground shrink-0">
+                                    <Search className="h-5 w-5" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={topic}
+                                    onChange={(e) => setTopic(e.target.value)}
+                                    placeholder="Quantum Physics, Renaissance Art..."
+                                    className="flex-1 w-full h-14 pl-3 pr-4 bg-transparent border-none text-lg focus:outline-none placeholder:text-muted-foreground/50 font-sans min-w-0"
+                                    autoFocus
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={!topic.trim() || isResolving}
+                                    className={cn(
+                                        "px-6 h-12 rounded-full bg-primary text-primary-foreground text-lg font-medium flex items-center gap-2 transition-all duration-300 shadow-md shrink-0 mb-0.5 mr-0.5",
+                                        (!topic.trim() && !isResolving) ? "opacity-0 scale-90 pointer-events-none" : "opacity-100 scale-100 hover:scale-105",
+                                        isResolving && "cursor-wait opacity-80"
+                                    )}
+                                >
+                                    {isResolving ? (
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <>Go <ArrowRight className="h-5 w-5" /></>
+                                    )}
+                                </button>
                             </div>
-                            <input
-                                type="text"
-                                value={topic}
-                                onChange={(e) => setTopic(e.target.value)}
-                                placeholder="Quantum Physics, Renaissance Art..."
-                                className="w-full h-14 pl-12 pr-16 rounded-full border border-border bg-background/80 backdrop-blur-xl text-lg shadow-lg hover:shadow-xl focus:shadow-2xl focus:scale-105 focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all duration-300 placeholder:text-muted-foreground/50 font-sans relative z-10"
-                                autoFocus
-                            />
-                            <button
-                                type="submit"
-                                disabled={!topic.trim() || isResolving}
-                                className={cn(
-                                    "absolute inset-y-1.5 right-1.5 px-4 rounded-full bg-primary text-primary-foreground font-medium flex items-center gap-2 transition-all duration-300 z-20 shadow-md",
-                                    (!topic.trim() && !isResolving) ? "opacity-0 scale-90 pointer-events-none" : "opacity-100 scale-100 hover:scale-105",
-                                    isResolving && "cursor-wait opacity-80"
-                                )}
-                            >
-                                {isResolving ? (
-                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                    <>Go <ArrowRight className="h-4 w-4" /></>
-                                )}
-                            </button>
 
                             {/* Autocomplete Results */}
                             <AnimatePresence>
                                 {searchResults.length > 0 && (
                                     <motion.div
-                                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                                        className="absolute top-full left-0 right-0 mt-3 bg-background/90 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl overflow-hidden z-0"
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden border-t border-border/10"
                                     >
-                                        {searchResults.map((result) => (
-                                            <Link
-                                                key={result.id}
-                                                href={`/wiki/${result.slug}`}
-                                                className="block text-left px-6 py-3 hover:bg-primary/5 transition-colors border-b border-border/10 last:border-0"
-                                            >
-                                                <div className="font-medium text-foreground">{result.title}</div>
-                                            </Link>
-                                        ))}
-                                        <div className="px-4 py-2 bg-muted/20 text-xs text-muted-foreground text-center">
-                                            Press Enter to generate fresh content
+                                        <div className="py-2">
+                                            {searchResults.map((result) => (
+                                                <Link
+                                                    key={result.id}
+                                                    href={`/wiki/${result.slug}`}
+                                                    className="block text-left px-6 py-3 hover:bg-primary/5 transition-colors"
+                                                >
+                                                    <div className="font-medium text-foreground">{result.title}</div>
+                                                </Link>
+                                            ))}
+                                            <div className="px-4 py-2 text-xs text-muted-foreground text-center opacity-50">
+                                                Press Enter to generate fresh content
+                                            </div>
                                         </div>
                                     </motion.div>
                                 )}

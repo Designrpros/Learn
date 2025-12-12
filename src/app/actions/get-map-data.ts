@@ -10,6 +10,7 @@ export async function getMapData() {
                 title: true,
                 slug: true,
                 parentId: true,
+                icon: true,
             }
         });
 

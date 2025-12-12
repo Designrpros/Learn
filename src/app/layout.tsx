@@ -22,7 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Peak Learn",
+  title: "Wikits",
   description: "A Generative Learning Engine.",
 };
 

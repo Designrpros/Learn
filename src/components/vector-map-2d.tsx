@@ -4,6 +4,10 @@ import { useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import { useRouter } from 'next/navigation';
 
+import { useThemeDetector } from '@/hooks/use-theme-detector';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { MapIcon } from '@/components/map-icon';
+
 interface VectorMap2DProps {
     topics: any[];
     edgesData: any[];
@@ -13,6 +17,7 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
     const svgRef = useRef<SVGSVGElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
+    const isDark = useThemeDetector();
 
     const nodes = useMemo(() => topics.map(t => ({ ...t })), [topics]);
     const links = useMemo(() => edgesData.map(e => ({
@@ -51,19 +56,23 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
 
         svg.call(zoom as any);
 
+        // Theme Colors
+        const linkColor = isDark ? "#999" : "#a8a29e";
+        const nodeStroke = isDark ? "#fff" : "#1c1917"; // White vs Stone-900
+        const nodeFill = isDark ? "#69b3a2" : "#0f766e"; // Teal
+        const iconColor = isDark ? "#fff" : "#fff"; // White icons on Teal
+
         // Links
         const link = g.append("g")
-            .attr("stroke", "#999")
+            .attr("stroke", linkColor)
             .attr("stroke-opacity", 0.6)
             .selectAll("line")
             .data(links)
             .join("line")
             .attr("stroke-width", 1.5);
 
-        // Nodes
+        // Nodes Group
         const node = g.append("g")
-            .attr("stroke", "#fff")
-            .attr("stroke-width", 1.5)
             .selectAll("g")
             .data(nodes)
             .join("g")
@@ -88,19 +97,40 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
                 router.push(url);
             });
 
+        // Node Circle (Background)
         node.append("circle")
-            .attr("r", 10) // Size could depend on "weight" or connections
-            .attr("fill", "#69b3a2");
+            .attr("r", 20) // Increased size for icon
+            .attr("fill", nodeFill)
+            .attr("stroke", nodeStroke)
+            .attr("stroke-width", 1.5);
 
+        // Icon injection
+        node.append("g")
+            .attr("transform", "translate(-10, -10)") // Center 20x20 icon
+            .attr("color", iconColor) // Cascade color
+            .html((d: any) => {
+                return renderToStaticMarkup(
+                    <MapIcon
+                        name={d.icon || "Circle"}
+                        size={20}
+                        strokeWidth={2}
+                    />
+                );
+            });
+
+        // Title Label
         node.append("text")
             .text((d: any) => d.title)
-            .attr("x", 12)
-            .attr("y", 4)
-            .attr("fill", "currentColor")
+            .attr("x", 0)
+            .attr("y", 32) // Below the circle (20 radius + padding)
+            .attr("text-anchor", "middle")
             .style("font-size", "12px")
             .style("fill", "var(--foreground)")
-            .style("pointer-events", "none");
+            .style("pointer-events", "none")
+            .style("font-weight", "500")
+            .style("text-shadow", isDark ? "0px 1px 2px #000" : "none");
 
+        // Use requestAnimationFrame for smoother ticks if possible, but d3 .on("tick") is standard
         simulation.on("tick", () => {
             link
                 .attr("x1", (d: any) => d.source.x)
@@ -114,7 +144,8 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
         return () => {
             simulation.stop();
         };
-    }, [nodes, links, router]);
+    }, [nodes, links, router, isDark]); // Added isDark to dependency to redraw on theme change
+
 
     return (
         <div ref={containerRef} className="w-full h-full bg-background/50">

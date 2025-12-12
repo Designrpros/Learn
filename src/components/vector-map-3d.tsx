@@ -11,6 +11,7 @@ import { Search, Plus, Minus, RefreshCw, X, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUIStore } from '@/lib/ui-store';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MapIcon } from '@/components/map-icon';
 
 interface Topic {
     id: string;
@@ -217,12 +218,14 @@ function GraphScene({
     searchTerm,
     setSearchTerm,
     onNodeSelect,
-    selectedNodeId
+    selectedNodeId,
+    isDark
 }: VectorMap3DProps & {
     searchTerm: string,
     setSearchTerm: (s: string) => void,
     onNodeSelect: (node: any) => void,
-    selectedNodeId: string | null
+    selectedNodeId: string | null,
+    isDark: boolean
 }) {
     const router = useRouter();
     // Use state only for the *list* of nodes/links, not their positions
@@ -290,25 +293,6 @@ function GraphScene({
             const end = link.target as any;
 
             if (ref && typeof start === 'object' && typeof end === 'object') {
-                // BufferGeometry update would be better, but Line component handles points prop reactivity.
-                // However, since we want to avoid re-renders, we cannot rely on 'points' prop update via state.
-                // BUT: The 'Line' component from Drei usually requires points to be passed. 
-                // Updating props triggers re-render. 
-                // For perf, we should use a custom Line or update the geometry directly.
-                // For now, let's skip link updates if they are too heavy or check how Drei Line behaves.
-                // Standard Drei Line uses 'setPoints' if ref is exposed? No.
-                // Let's rely on React for Links for now (less frequent than nodes?) 
-                // NO, links move with nodes. 
-
-                // Hack: Drei Line accepts a ref to the Line2 object.
-                // We can't easily update geometry of Line2 frame-by-frame without perf hit or direct geom access.
-                // Let's omit link animation or try standard line segments.
-                // For this user request, 'nodes' are key. Links are secondary.
-                // Let's try to update the geometry via the ref.
-                // Actually, standard <line> native element is faster.
-                // Let's use standard <line> with <bufferGeometry> for max perf?
-                // Or just accept that lines might lag or use a specialized component.
-
                 // Optimization: Only update lines if we have a ref to a standard THREE.Line
                 // and update its geometry.attributes.position.
             }
@@ -324,6 +308,13 @@ function GraphScene({
 
     // Helper to get selected node object for UI
     const selectedNodeObj = nodes.find(n => n.id === selectedNodeId);
+
+    // Theme Colors
+    const textColor = isDark ? "#ffffff" : "#1c1917"; // Stone-900 for Light
+    const matchColor = isDark ? "#fbbf24" : "#d97706"; // Amber-400 (Dark) / Amber-600 (Light)
+    const highlightColor = "#ef4444"; // Red-500
+    const defaultColor = isDark ? "#D4AF37" : "#0f766e"; // Gold (Dark) / Teal-700 (Light)
+    const dimColor = isDark ? "#555" : "#a8a29e"; // Stone-500 (Light)
 
     return (
         <group>
@@ -343,7 +334,8 @@ function GraphScene({
                 const isSelected = selectedNodeId === node.id;
                 const isDimmed = (searchTerm && !isMatch) || (selectedNodeId && !isSelected);
 
-                const color = isSelected ? "#ef4444" : (isMatch ? "#fbbf24" : "#D4AF37");
+                const color = isSelected ? highlightColor : (isMatch ? matchColor : defaultColor);
+                // Increased visual scale for icons
                 const scale = isSelected ? 4 : (isMatch ? 3.5 : 2.5);
 
                 return (
@@ -355,14 +347,33 @@ function GraphScene({
                     >
                         <Float speed={2} rotationIntensity={0.5} floatIntensity={0.5}>
                             <Billboard>
+                                {/* Icon Container - HTML Overlay ensures crisp vectors */}
+                                <Html
+                                    transform
+                                    occlude
+                                    position={[0, 1.5, 0]} // Float above text center
+                                    style={{
+                                        pointerEvents: 'none',
+                                        display: isDimmed ? 'none' : 'flex', // Hide dimmed icons for performance/focus
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        color: color
+                                    }}
+                                >
+                                    <div className="flex items-center justify-center w-8 h-8">
+                                        <MapIcon name={node.icon || "Circle"} className="w-full h-full drop-shadow-md" strokeWidth={2} />
+                                    </div>
+                                </Html>
+
                                 <Text
-                                    fontSize={scale}
+                                    position={[0, -0.5, 0]} // Shift text down
+                                    fontSize={scale * 0.5} // Text relative to node
                                     color={color}
                                     anchorX="center"
-                                    anchorY="middle"
+                                    anchorY="top"
                                     fillOpacity={isDimmed ? 0.2 : 1}
-                                    outlineWidth={0.05}
-                                    outlineColor="#000"
+                                    outlineWidth={isDark ? 0.05 : 0.02}
+                                    outlineColor={isDark ? "#000" : "#fff"}
                                     outlineOpacity={0.5}
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -379,13 +390,7 @@ function GraphScene({
                 );
             })}
 
-            {/* Links - Using simple Three.js LineSegments for performance if possible, or keeping React update for now but optimizing? 
-                Actually, let's keep the previous implementation for links but accept they might lag if we don't 'setLinks'.
-                Wait, if 'setLinks' is not called, links won't move.
-                We MUST render links frame-by-frame. 
-                Using a single <LineSegments> creates best perf.
-            */}
-            <LinkSet links={links} nodes={nodes} searchTerm={searchTerm} />
+            <LinkSet links={links} nodes={nodes} searchTerm={searchTerm} isDark={isDark} />
         </group>
     );
 }
@@ -394,7 +399,8 @@ function GraphScene({
 // Or just a simple functional one that re-renders?
 // If we want 60fps lines, we can't re-render. using <line> with ref update.
 // Optimization: Single draw-call LineSegments
-function LinkSet({ links, nodes, searchTerm }: { links: any[], nodes: any[], searchTerm: string }) {
+// Optimization: Single draw-call LineSegments
+function LinkSet({ links, nodes, searchTerm, isDark }: { links: any[], nodes: any[], searchTerm: string, isDark: boolean }) {
     const linesRef = useRef<THREE.LineSegments>(null);
     const geometryRef = useRef<THREE.BufferGeometry>(null);
 
@@ -442,11 +448,13 @@ function LinkSet({ links, nodes, searchTerm }: { links: any[], nodes: any[], sea
         geometry.attributes.position.needsUpdate = true;
     });
 
+    const lineColor = isDark ? (searchTerm ? "#555" : "#78716c") : (searchTerm ? "#d6d3d1" : "#a8a29e");
+
     return (
         <lineSegments ref={linesRef}>
             <bufferGeometry ref={geometryRef} />
             <lineBasicMaterial
-                color={searchTerm ? "#555" : "#78716c"}
+                color={lineColor}
                 opacity={searchTerm ? 0.1 : 0.2}
                 transparent
                 linewidth={1}
@@ -455,20 +463,32 @@ function LinkSet({ links, nodes, searchTerm }: { links: any[], nodes: any[], sea
     );
 }
 
+import { useThemeDetector } from '@/hooks/use-theme-detector';
+
+// ... (imports remain)
+
+// ... (GraphScene definition remains)
+
 export default function VectorMap3D(props: VectorMap3DProps) {
     const [search, setSearch] = useState("");
     const [selectedNode, setSelectedNode] = useState<any | null>(null);
+    const isDark = useThemeDetector();
 
     const handleNodeSelect = (node: any) => {
         setSelectedNode(node);
     };
 
+    // Theme Colors
+    const fogColor = isDark ? '#000000' : '#f5f5f4'; // Stone-100 for Light
+    const lightColor = isDark ? '#ffffff' : '#0c0a09'; // Stone-950 for Light
+    // Note: GraphScene needs to know about theme to color nodes/text. We should pass isDark prop.
+
     return (
         <div className="w-full h-full relative group/container font-sans">
             <Canvas camera={{ position: [0, 0, 100], fov: 60 }} gl={{ alpha: true }} onClick={() => setSelectedNode(null)}>
-                <fog attach="fog" args={['#000000', 50, 180]} />
+                <fog attach="fog" args={[fogColor, 50, 180]} />
                 <ambientLight intensity={1.5} />
-                <pointLight position={[50, 50, 50]} intensity={2} color="#fff" />
+                <pointLight position={[50, 50, 50]} intensity={2} color={lightColor} />
 
                 <GraphScene
                     {...props}
@@ -476,10 +496,11 @@ export default function VectorMap3D(props: VectorMap3DProps) {
                     setSearchTerm={setSearch}
                     onNodeSelect={handleNodeSelect}
                     selectedNodeId={selectedNode?.id}
+                    isDark={isDark}
                 />
 
                 <OrbitControls
-                    makeDefault // Crucial for useThree().controls to work in overlay
+                    makeDefault
                     enablePan={true}
                     enableZoom={true}
                     enableRotate={true}

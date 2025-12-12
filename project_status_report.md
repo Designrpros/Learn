@@ -1,10 +1,10 @@
-# Peak Learn - Project Status Report
+# Wikits - Project Status Report
 
 **Date**: December 11, 2025
 **Version**: 0.1.5 (Core Feature Complete)
 
 ## 1. Executive Summary
-The project "Peak Learn" has successfully transitioned from a dashboard concept to a Generative Learning Engine. All core pillars—**Learn** (Generation), **Map** (Visualization), **Wiki** (Archive), and **Forum** (Discussion)—are implemented and functional. The application is backed by a persistent PostgreSQL database and features a unified Global UI.
+The project "Wikits" has successfully transitioned from a dashboard concept to a Generative Learning Engine. All core pillars—**Learn** (Generation), **Map** (Visualization), **Wiki** (Archive), and **Forum** (Discussion)—are implemented and functional. The application is backed by a persistent PostgreSQL database and features a unified Global UI.
 
 ## 2. Completed Features
 

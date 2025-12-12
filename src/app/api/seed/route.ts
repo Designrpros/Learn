@@ -22,7 +22,7 @@ async function insertTopicRecursive(item: OutlineItem, parentId: string | null =
 
     if (!newTopic) return;
 
-    // 2. Insert dummy thread (Peak/Sub feature verification)
+    // 2. Insert dummy thread (Wikits/Sub feature verification)
     if (Math.random() > 0.3) { // 70% chance to have a thread
         await db.insert(threads).values({
             topicId: newTopic.id,

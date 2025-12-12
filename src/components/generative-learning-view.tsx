@@ -193,7 +193,7 @@ export function GenerativeLearningView({ topic }: GenerativeLearningViewProps) {
                             {activeChapterId === "overview" ? "INTRODUCTION" :
                                 syllabus?.chapters && activeChapterId ?
                                     `Chapter ${syllabus.chapters.findIndex(c => c?.id === activeChapterId) + 1}` :
-                                    "Peak Learn"}
+                                    "Wikits"}
                         </span>
                     </div>
 

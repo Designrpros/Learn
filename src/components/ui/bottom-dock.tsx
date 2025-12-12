@@ -2,7 +2,7 @@
 
 import { useUIStore } from "@/lib/ui-store";
 import { cn } from "@/lib/utils";
-import { Sidebar, Activity, House, Map as MapIcon, BookOpen, Layers } from "lucide-react";
+import { Sidebar, Activity, House, Map as MapIcon, BookOpen, Layers, PanelRight } from "lucide-react";
 import Link from "next/link";
 
 export function BottomDock() {
@@ -10,7 +10,7 @@ export function BottomDock() {
 
     return (
         <>
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-background/80 backdrop-blur-xl border border-border rounded-full shadow-2xl px-4 py-2 flex items-center gap-4 h-14">
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-background/80 backdrop-blur-xl border border-border rounded-full shadow-2xl px-4 py-2 flex items-center gap-2 h-14">
 
                 {/* Left: Sidebar Toggle */}
                 <button
@@ -29,7 +29,7 @@ export function BottomDock() {
                 <div className="flex items-center gap-2">
 
                     {/* Group 1: Explore */}
-                    <div className="hidden md:flex items-center gap-1">
+                    <div className="flex items-center gap-1">
                         <Link href="/" className="p-2 text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-full transition-all" title="Home">
                             <House className="w-5 h-5" />
                         </Link>
@@ -39,16 +39,16 @@ export function BottomDock() {
                     </div>
 
                     {/* Dynamic Actions (Center) */}
-                    <div className="flex items-center gap-2 px-2">
-                        {centerActions && (
-                            <div className="flex items-center gap-2 px-3 py-1 bg-muted/50 rounded-full border border-border/50 animate-in fade-in zoom-in-95 duration-200">
+                    {centerActions && (
+                        <div className="flex items-center gap-2 px-2">
+                            <div className="flex items-center gap-1 animate-in fade-in zoom-in-95 duration-200">
                                 {centerActions}
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* Group 2: Knowledge */}
-                    <div className="hidden md:flex items-center gap-1">
+                    <div className="flex items-center gap-1">
                         <Link href="/forum" className="p-2 text-muted-foreground hover:text-primary hover:bg-muted/50 rounded-full transition-all" title="Forum">
                             <BookOpen className="w-5 h-5" />
                         </Link>
@@ -69,11 +69,9 @@ export function BottomDock() {
                         isInspectorOpen && "bg-muted text-foreground"
                     )}
                 >
-                    <Activity className="w-5 h-5" />
+                    <PanelRight className="w-5 h-5" />
                 </button>
             </div>
-
-
         </>
     );
 }

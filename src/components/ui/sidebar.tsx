@@ -150,90 +150,100 @@ export function Sidebar() {
     // ...
 
     return (
-        <motion.div
-            initial={{ width: 320, opacity: 1 }}
-            animate={{
-                width: isSidebarOpen ? 320 : 0,
-                opacity: isSidebarOpen ? 1 : 0,
-            }}
-            className="fixed left-0 top-0 h-screen border-r border-border bg-card/50 backdrop-blur-xl shrink-0 overflow-hidden z-50 flex flex-col shadow-2xl"
-        >
-            <div className="w-[320px] h-full flex flex-col">
-                {/* Header */}
-                <div className="p-4 border-b border-border flex flex-col gap-4 shrink-0">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 font-semibold text-sm">
-                            <Database className="w-4 h-4 text-primary" />
-                            <span>Database Explorer</span>
+        <AnimatePresence>
+            {isSidebarOpen && (
+                <motion.div
+                    initial={{ x: "-100%" }}
+                    animate={{ x: 0 }}
+                    exit={{ x: "-100%" }}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    className="fixed left-0 top-0 h-screen border-r border-border bg-card/95 backdrop-blur-xl shrink-0 overflow-hidden z-50 flex flex-col shadow-2xl w-full md:w-80"
+                >
+                    <div className="h-full flex flex-col">
+                        {/* Header */}
+                        <div className="p-4 border-b border-border flex flex-col gap-4 shrink-0">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 font-semibold text-sm">
+                                    <Database className="w-4 h-4 text-primary" />
+                                    <span>Database Explorer</span>
+                                </div>
+                                {/* Close Button (Mobile/Desktop) */}
+                                <button
+                                    onClick={() => useUIStore.getState().setSidebarOpen(false)}
+                                    className="p-2 hover:bg-muted rounded-full transition-colors"
+                                >
+                                    <Icons.X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {/* View Mode Toggle */}
+                            <div className="flex bg-muted/50 p-1 rounded-lg">
+                                <button
+                                    onClick={() => setDatabaseViewMode('personal')}
+                                    className={cn(
+                                        "flex-1 text-xs font-medium py-1.5 rounded-md transition-all",
+                                        databaseViewMode === 'personal'
+                                            ? "bg-background text-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground/80"
+                                    )}
+                                >
+                                    Personal
+                                </button>
+                                <button
+                                    onClick={() => setDatabaseViewMode('global')}
+                                    className={cn(
+                                        "flex-1 text-xs font-medium py-1.5 rounded-md transition-all",
+                                        databaseViewMode === 'global'
+                                            ? "bg-background text-foreground shadow-sm"
+                                            : "text-muted-foreground hover:text-foreground/80"
+                                    )}
+                                >
+                                    Global
+                                </button>
+                            </div>
                         </div>
-                    </div>
 
-                    {/* View Mode Toggle */}
-                    <div className="flex bg-muted/50 p-1 rounded-lg">
-                        <button
-                            onClick={() => setDatabaseViewMode('personal')}
-                            className={cn(
-                                "flex-1 text-xs font-medium py-1.5 rounded-md transition-all",
-                                databaseViewMode === 'personal'
-                                    ? "bg-background text-foreground shadow-sm"
-                                    : "text-muted-foreground hover:text-foreground/80"
-                            )}
-                        >
-                            Personal
-                        </button>
-                        <button
-                            onClick={() => setDatabaseViewMode('global')}
-                            className={cn(
-                                "flex-1 text-xs font-medium py-1.5 rounded-md transition-all",
-                                databaseViewMode === 'global'
-                                    ? "bg-background text-foreground shadow-sm"
-                                    : "text-muted-foreground hover:text-foreground/80"
-                            )}
-                        >
-                            Global
-                        </button>
-                    </div>
-                </div>
+                        {/* Search */}
+                        <div className="p-4 py-2 shrink-0">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
+                                <input
+                                    type="text"
+                                    placeholder="Filter topics..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full bg-muted/50 border border-border rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary transition-all shadow-sm"
+                                />
+                            </div>
+                        </div>
 
-                {/* Search */}
-                <div className="p-4 py-2 shrink-0">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
-                        <input
-                            type="text"
-                            placeholder="Filter topics..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-muted/50 border border-border rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary transition-all shadow-sm"
-                        />
-                    </div>
-                </div>
+                        {/* Tree View */}
+                        <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
+                            <div className="text-xs font-medium text-muted-foreground px-2 py-2 uppercase tracking-wider mb-1 flex items-center justify-between">
+                                <span>{databaseViewMode === 'personal' ? 'My Knowledge' : 'Global Graph'}</span>
+                            </div>
 
-                {/* Tree View */}
-                <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
-                    <div className="text-xs font-medium text-muted-foreground px-2 py-2 uppercase tracking-wider mb-1 flex items-center justify-between">
-                        <span>{databaseViewMode === 'personal' ? 'My Knowledge' : 'Global Graph'}</span>
-                    </div>
-
-                    {loading ? (
-                        <div className="text-xs text-muted-foreground p-4 text-center animate-pulse">Loading hierarchy...</div>
-                    ) : (
-                        <div className="flex flex-col gap-0.5 pb-10">
-                            {filteredData.length > 0 ? (
-                                filteredData.map((node) => (
-                                    <TreeItem key={node.id} item={node} />
-                                ))
+                            {loading ? (
+                                <div className="text-xs text-muted-foreground p-4 text-center animate-pulse">Loading hierarchy...</div>
                             ) : (
-                                <div className="text-xs text-muted-foreground p-4 text-center italic">
-                                    {databaseViewMode === 'personal'
-                                        ? "No personal topics found. Generate something!"
-                                        : "No topics found."}
+                                <div className="flex flex-col gap-0.5 pb-10">
+                                    {filteredData.length > 0 ? (
+                                        filteredData.map((node) => (
+                                            <TreeItem key={node.id} item={node} />
+                                        ))
+                                    ) : (
+                                        <div className="text-xs text-muted-foreground p-4 text-center italic">
+                                            {databaseViewMode === 'personal'
+                                                ? "No personal topics found. Generate something!"
+                                                : "No topics found."}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
-                    )}
-                </div>
-            </div>
-        </motion.div>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 }

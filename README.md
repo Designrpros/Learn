@@ -1,7 +1,7 @@
 
-# Peak Learn
+# Wikits
 
-Peak Learn is a comprehensive Knowledge Graph platform designed to facilitate deep, structured learning. It combines a hierarchical Wiki system, a Reddit-inspired Forum for topic-specific discussions, and a 2D Vector Map for visualizing knowledge connections.
+Wikits is a comprehensive Knowledge Graph platform designed to facilitate deep, structured learning. It combines a hierarchical Wiki system, a Reddit-inspired Forum for topic-specific discussions, and a 2D Vector Map for visualizing knowledge connections.
 
 ## Key Features
 
@@ -11,7 +11,7 @@ Peak Learn is a comprehensive Knowledge Graph platform designed to facilitate de
 *   **Interactive Sidebar:** A recursive sidebar component allows traversal of the entire knowledge graph.
 *   **Article View:** A polished, academic aesthetic for reading topics, including syllabus, chapters, and sub-topic grids.
 
-### 2. "Peak/Sub" Forum System
+### 2. "Wikits/Sub" Forum System
 *   **Topic-Based Communities:** Every Wiki Topic acts as a "Subreddit" (e.g., `/wiki/physics` has a corresponding `/wiki/physics/forum`).
 *   **Threaded Discussions:** Users can create threads via a clean modal interface.
 *   **Wiki Context Drawer:** A unique "Context Drawer" allows users to reference the Wiki article *while* participating in forum discussions.
