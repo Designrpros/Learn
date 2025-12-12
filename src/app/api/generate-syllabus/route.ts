@@ -127,7 +127,10 @@ export async function POST(req: Request) {
                     if (tagSlug === slug) continue;
 
                     const existingParent = await db.query.topics.findFirst({
-                        where: eq(topics.slug, tagSlug)
+                        where: (t, { and, eq, isNull }) => and(
+                            eq(t.slug, tagSlug),
+                            isNull(t.creatorId) // STRICT: Only attach to System Topics (Seed)
+                        )
                     });
 
                     if (existingParent) {

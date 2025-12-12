@@ -24,35 +24,27 @@ export function WikiContentMonitor({ topic, initialContent }: WikiContentMonitor
     const [wasGenerating, setWasGenerating] = useState(false);
 
     // Is THIS topic currently being generated?
-    const isThisTopicActive = activeJob?.topicId === topic.id;
+    const isJobForThisTopic = activeJob?.topicId === topic.id;
+    const isThisTopicGenerating = isJobForThisTopic && activeJob?.status === 'generating';
 
     // Monitor active state to trigger refresh on completion
     useEffect(() => {
-        if (isThisTopicActive) {
+        if (isThisTopicGenerating) {
             setWasGenerating(true);
-        } else if (wasGenerating) {
-            // Job just finished
+        } else if (wasGenerating && activeJob?.status === 'completed') {
+            // Job just finished successfully
             setWasGenerating(false);
             console.log("Generation finished, refreshing page data...");
             router.refresh();
         }
-    }, [isThisTopicActive, wasGenerating, router]);
+    }, [isThisTopicGenerating, wasGenerating, activeJob?.status, router]);
 
     // Determine content to show:
-
-    // Determine content to show:
-    // If active and generating, use activeJob.content (streaming)
-    // Else use initialContent (static)
-    // Note: If job just finished, activeJob might be null or status=completed.
-    // If we rely on 'initialContent', we need the page to refresh/revalidate to show the new DB content.
-    // Since we don't have automatic revalidation here yet, we should probably check if we *were* just generating this topic.
-    // However, simplest fix for streaming is direct access.
-
-    // Fallback: If we have an active job for this topic, show that.
-    // If not, show initialContent.
-    const displayContent = (isThisTopicActive && activeJob?.content)
+    // If we have an active job (generating OR completed) use that content to avoid flicker before refresh
+    const displayContent = (isJobForThisTopic && activeJob?.content)
         ? activeJob.content
         : (localContent || initialContent);
+
 
     useEffect(() => {
         // Just sync initial if needed? No, purely derived.
@@ -110,12 +102,15 @@ export function WikiContentMonitor({ topic, initialContent }: WikiContentMonitor
 
     const changeTrackerRef = useRef(false); // To satisfy strict mode double invoke prevention if needed, but initiatedRef works.
 
-    if (isThisTopicActive) {
+    // Show streaming or just-completed content (before refresh)
+    if (isJobForThisTopic && displayContent) {
         return (
-            <div className="space-y-6 animate-pulse-subtle">
+            <div className={cn("space-y-6", isThisTopicGenerating && "animate-pulse-subtle")}>
                 <article className="prose prose-stone dark:prose-invert max-w-none prose-lg prose-p:leading-relaxed">
                     <ReactMarkdown components={{ a: WikiLink as any }}>{displayContent}</ReactMarkdown>
-                    <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1 align-middle" />
+                    {isThisTopicGenerating && (
+                        <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-1 align-middle" />
+                    )}
                 </article>
             </div>
         );
