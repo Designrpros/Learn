@@ -23,6 +23,14 @@ export default async function WikiTopicLayout({
     // Determine stub status (reused logic)
     // const isStub = !topic.syllabus || (Array.isArray(topic.syllabus) && topic.syllabus.length === 0);
 
+    // Build Breadcrumbs
+    const breadcrumbs = [];
+    let currentParent: any = topic.parent;
+    while (currentParent) {
+        breadcrumbs.unshift({ title: currentParent.title, slug: currentParent.slug });
+        currentParent = currentParent.parent;
+    }
+
     return (
         <div className="min-h-screen bg-background text-foreground pb-32">
             {/* Header / Hero - Moved from page.tsx */}
@@ -55,7 +63,16 @@ export default async function WikiTopicLayout({
 
                 <div className="flex flex-wrap items-center gap-2 mb-4 text-xs font-medium text-muted-foreground uppercase tracking-widest">
                     <Link href="/wiki" className="hover:text-primary transition-colors">Database</Link>
-                    {/* Breadcrumb Path logic could be moved here or kept simple */}
+
+                    {breadcrumbs.map((crumb, i) => (
+                        <React.Fragment key={crumb.slug}>
+                            <span className="opacity-40">/</span>
+                            <Link href={`/wiki/${crumb.slug}`} className="hover:text-primary transition-colors">
+                                {crumb.title}
+                            </Link>
+                        </React.Fragment>
+                    ))}
+
                     <span className="opacity-40">/</span>
                     <span className="text-primary">{topic.title}</span>
                 </div>
