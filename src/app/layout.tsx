@@ -32,6 +32,8 @@ import { BottomDock } from "@/components/ui/bottom-dock";
 import { getSidebarData } from "@/lib/db-queries";
 import { VectorBackground } from "@/components/ui/vector-background";
 
+import Script from "next/script";
+
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -43,6 +45,20 @@ export default async function RootLayout({
         <body
           className={`${geistSans.variable} ${merriweather.variable} ${jetbrainsMono.variable} antialiased bg-background text-foreground font-sans flex`}
         >
+          {/* Google Analytics */}
+          <Script
+            src="https://www.googletagmanager.com/gtag/js?id=G-L2C85H4RB1"
+            strategy="afterInteractive"
+          />
+          <Script id="google-analytics" strategy="afterInteractive">
+            {`
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+
+              gtag('config', 'G-L2C85H4RB1');
+            `}
+          </Script>
           {/* Global Background */}
           <div className="fixed inset-0 -z-10">
             <VectorBackground particleCount={60} color="100, 100, 100" />
