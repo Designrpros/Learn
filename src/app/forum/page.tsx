@@ -1,72 +1,59 @@
-import { getThreads } from "@/lib/db-queries";
-import Link from "next/link";
-import { MessageSquare, ArrowBigUp, User } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { db } from "@/db";
+import { threads } from "@/db/schema";
+import { desc, ilike, or } from "drizzle-orm";
 import { ForumDockActions } from "@/components/forum/forum-dock-actions";
+import { SearchInput } from "@/components/ui/search-input";
+import { ForumList } from "@/components/forum/forum-list";
 
 export const revalidate = 0;
 
-export default async function ForumPage() {
-    const threads = await getThreads();
+async function getInitialThreads(q?: string) {
+    return await db.query.threads.findMany({
+        where: (threads, { ilike, or, and }) => {
+            const conditions = [];
+            if (q) {
+                conditions.push(or(ilike(threads.title, `%${q}%`)));
+            }
+            return and(...conditions);
+        },
+        orderBy: [desc(threads.createdAt)],
+        limit: 10,
+        with: {
+            tags: {
+                with: {
+                    tag: true
+                }
+            },
+            posts: {
+                columns: {
+                    id: true
+                }
+            }
+        }
+    });
+}
+
+export default async function ForumPage({
+    searchParams
+}: {
+    searchParams: Promise<{ q?: string }>
+}) {
+    const { q } = await searchParams;
+    const searchQuery = q;
+    const initialThreads = await getInitialThreads(searchQuery);
 
     return (
         <div className="max-w-4xl mx-auto py-12 px-4 pb-32">
             <header className="mb-12 text-center relative">
                 <h1 className="text-4xl md:text-5xl font-serif font-medium text-foreground mb-4">Community Forum</h1>
                 <p className="text-muted-foreground text-lg mb-6">Discuss topics, ask questions, and share knowledge.</p>
+                <div className="max-w-md mx-auto mb-6">
+                    <SearchInput placeholder="Search discussions..." className="shadow-sm" />
+                </div>
                 <ForumDockActions />
             </header>
 
-            <div className="space-y-4">
-                {threads.map((thread) => (
-                    <Link key={thread.id} href={`/forum/${thread.id}`} className="block group">
-                        <div className="bg-card/50 hover:bg-card border border-border p-4 rounded-xl transition-all duration-200 hover:shadow-md hover:border-primary/20 flex gap-4">
-                            {/* Vote Column (Visual Only) */}
-                            <div className="flex flex-col items-center gap-1 bg-muted/30 p-2 rounded-lg h-fit min-w-[3rem]">
-                                <ArrowBigUp className="w-6 h-6 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
-                                <span className="text-sm font-bold text-foreground">0</span>
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    {thread.tags.map(({ tag }) => (
-                                        <span key={tag.id} className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                                            {tag.name}
-                                        </span>
-                                    ))}
-                                    <span className="text-xs text-muted-foreground">
-                                        • Posted by <span className="font-medium text-foreground">{thread.authorName}</span> {formatDistanceToNow(thread.createdAt)} ago
-                                    </span>
-                                </div>
-
-                                <h2 className="text-xl font-medium text-foreground group-hover:text-primary transition-colors mb-2 truncate">
-                                    {thread.title}
-                                </h2>
-
-                                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                    <div className="flex items-center gap-1.5 hover:bg-muted/50 px-2 py-1 rounded transition-colors">
-                                        <MessageSquare className="w-4 h-4" />
-                                        <span>{thread.posts.length} comments</span>
-                                    </div>
-                                    <div className="bg-muted/30 px-2 py-1 rounded text-xs">
-                                        {thread.category}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </Link>
-                ))}
-
-                {threads.length === 0 && (
-                    <div className="text-center py-20 bg-muted/10 rounded-2xl border border-dashed border-border">
-                        <p className="text-muted-foreground mb-4">No discussions yet.</p>
-                        <button className="px-4 py-2 bg-primary text-primary-foreground rounded-full font-medium text-sm">
-                            Start a Discussion
-                        </button>
-                    </div>
-                )}
-            </div>
+            <ForumList initialThreads={initialThreads} />
         </div>
     );
 }

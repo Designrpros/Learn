@@ -13,6 +13,9 @@ interface UIState {
     setSidebarOpen: (isOpen: boolean) => void;
     setInspectorOpen: (isOpen: boolean) => void;
 
+    mapSearchTerm: string;
+    setMapSearchTerm: (term: string) => void;
+
     databaseViewMode: 'global' | 'personal';
     setDatabaseViewMode: (mode: 'global' | 'personal') => void;
 
@@ -23,7 +26,7 @@ export const useUIStore = create<UIState>((set) => ({
     isSidebarOpen: false,
     isInspectorOpen: false,
     centerActions: null,
-    mapViewMode: '3d',
+    mapViewMode: '2d',
     toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
     toggleInspector: () => set((state) => ({ isInspectorOpen: !state.isInspectorOpen })),
     setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
@@ -34,6 +37,9 @@ export const useUIStore = create<UIState>((set) => ({
     // Database View Mode
     databaseViewMode: 'global',
     setDatabaseViewMode: (mode: 'global' | 'personal') => set({ databaseViewMode: mode }),
+
+    mapSearchTerm: "",
+    setMapSearchTerm: (term: string) => set({ mapSearchTerm: term }),
 
     closeAll: () => set({ isSidebarOpen: false, isInspectorOpen: false }),
 }));

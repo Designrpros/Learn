@@ -68,14 +68,10 @@ function MouseForce({ simulation }: { simulation: any }) {
 
 // --- UI OVERLAY COMPONENT (INSIDE CANVAS) ---
 function MapOverlay({
-    search,
-    setSearch,
     selectedNode,
     setSelectedNode,
     onOpenTopic
 }: {
-    search: string;
-    setSearch: (s: string) => void;
     selectedNode: any;
     setSelectedNode: (n: any) => void;
     onOpenTopic: () => void;
@@ -84,8 +80,6 @@ function MapOverlay({
     // @ts-ignore
     const controls = useThree((state) => state.controls);
     const { setCenterActions } = useUIStore();
-    const [isSearchOpen, setIsSearchOpen] = useState(true);
-    const searchInputRef = useRef<HTMLInputElement>(null);
 
     // Zoom Handlers
     const handleZoomIn = () => {
@@ -108,7 +102,7 @@ function MapOverlay({
     // Push Controls to Global Dock
     useEffect(() => {
         setCenterActions(
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
                 <button
                     onClick={handleZoomOut}
                     className="p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
@@ -142,34 +136,6 @@ function MapOverlay({
     return (
         <Html fullscreen className="pointer-events-none">
             <div className="w-full h-full relative p-6">
-
-                {/* Search - Top Right (Contextual to Map) */}
-                <div className="absolute top-4 right-4 pointer-events-auto">
-                    <div className={cn(
-                        "flex items-center bg-background/90 backdrop-blur-md rounded-full border border-border shadow-lg transition-all duration-300 ease-in-out",
-                        isSearchOpen ? "w-72 pr-2" : "w-12 h-12 justify-center cursor-pointer hover:bg-muted"
-                    )}>
-                        {isSearchOpen ? (
-                            <>
-                                <Search className="w-5 h-5 ml-4 text-muted-foreground shrink-0" />
-                                <input
-                                    ref={searchInputRef}
-                                    type="text"
-                                    placeholder="Search topics..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="w-full bg-transparent border-none focus:outline-none text-sm px-3 py-3 font-sans"
-                                />
-                            </>
-                        ) : (
-                            <Search
-                                onClick={() => setIsSearchOpen(true)}
-                                className="w-5 h-5 text-muted-foreground"
-                            />
-                        )}
-                    </div>
-                </div>
-
                 {/* Selected Node Card - Bottom Left */}
                 <AnimatePresence>
                     {selectedNode && (
@@ -216,13 +182,11 @@ function GraphScene({
     topics,
     edgesData,
     searchTerm,
-    setSearchTerm,
     onNodeSelect,
     selectedNodeId,
     isDark
 }: VectorMap3DProps & {
     searchTerm: string,
-    setSearchTerm: (s: string) => void,
     onNodeSelect: (node: any) => void,
     selectedNodeId: string | null,
     isDark: boolean
@@ -321,8 +285,6 @@ function GraphScene({
             <MouseForce simulation={simulation} />
 
             <MapOverlay
-                search={searchTerm}
-                setSearch={setSearchTerm}
                 selectedNode={selectedNodeObj}
                 setSelectedNode={(n) => onNodeSelect(n || null)}
                 onOpenTopic={handleOpenTopic}
@@ -470,7 +432,7 @@ import { useThemeDetector } from '@/hooks/use-theme-detector';
 // ... (GraphScene definition remains)
 
 export default function VectorMap3D(props: VectorMap3DProps) {
-    const [search, setSearch] = useState("");
+    const { mapSearchTerm } = useUIStore();
     const [selectedNode, setSelectedNode] = useState<any | null>(null);
     const isDark = useThemeDetector();
 
@@ -492,8 +454,7 @@ export default function VectorMap3D(props: VectorMap3DProps) {
 
                 <GraphScene
                     {...props}
-                    searchTerm={search}
-                    setSearchTerm={setSearch}
+                    searchTerm={mapSearchTerm}
                     onNodeSelect={handleNodeSelect}
                     selectedNodeId={selectedNode?.id}
                     isDark={isDark}
@@ -504,7 +465,7 @@ export default function VectorMap3D(props: VectorMap3DProps) {
                     enablePan={true}
                     enableZoom={true}
                     enableRotate={true}
-                    autoRotate={!search && !selectedNode}
+                    autoRotate={!mapSearchTerm && !selectedNode}
                     autoRotateSpeed={0.5}
                     dampingFactor={0.05}
                 />

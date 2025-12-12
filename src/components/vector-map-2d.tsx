@@ -1,8 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import * as d3 from 'd3';
 import { useRouter } from 'next/navigation';
+import { useUIStore } from '@/lib/ui-store';
+import { Minus, Plus, RefreshCw, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
 
 import { useThemeDetector } from '@/hooks/use-theme-detector';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -19,12 +23,68 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
     const router = useRouter();
     const isDark = useThemeDetector();
 
+    // UI State
+    const { setCenterActions, mapSearchTerm } = useUIStore();
+    const zoomRef = useRef<d3.ZoomBehavior<Element, unknown> | null>(null);
+    const svgSelectionRef = useRef<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null);
+
     const nodes = useMemo(() => topics.map(t => ({ ...t })), [topics]);
     const links = useMemo(() => edgesData.map(e => ({
         source: e.sourceTopicId,
         target: e.targetTopicId,
         ...e
     })), [edgesData]);
+
+    // Zoom Handlers
+    const handleZoomIn = () => {
+        if (svgSelectionRef.current && zoomRef.current) {
+            (svgSelectionRef.current.transition().duration(300) as any).call(zoomRef.current.scaleBy, 1.2);
+        }
+    };
+
+    const handleZoomOut = () => {
+        if (svgSelectionRef.current && zoomRef.current) {
+            (svgSelectionRef.current.transition().duration(300) as any).call(zoomRef.current.scaleBy, 0.8);
+        }
+    };
+
+    const handleReset = () => {
+        if (svgSelectionRef.current && zoomRef.current) {
+            (svgSelectionRef.current.transition().duration(750) as any).call(zoomRef.current.transform, d3.zoomIdentity);
+        }
+    };
+
+    // Controls in Dock
+    useEffect(() => {
+        setCenterActions(
+            <div className="hidden md:flex items-center gap-2">
+                <button
+                    onClick={handleZoomOut}
+                    className="p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    title="Zoom Out"
+                >
+                    <Minus className="w-4 h-4" />
+                </button>
+
+                <button
+                    onClick={handleReset}
+                    className="p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    title="Reset View"
+                >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                    onClick={handleZoomIn}
+                    className="p-2 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    title="Zoom In"
+                >
+                    <Plus className="w-4 h-4" />
+                </button>
+            </div>
+        );
+        return () => setCenterActions(null);
+    }, []);
 
     useEffect(() => {
         if (!containerRef.current || !svgRef.current) return;
@@ -37,6 +97,7 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
             .attr("height", height)
             .attr("viewBox", [-width / 2, -height / 2, width, height]);
 
+        svgSelectionRef.current = svg;
         svg.selectAll("*").remove(); // Clear previous
 
         const simulation = d3.forceSimulation(nodes as any)
@@ -54,6 +115,7 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
                 g.attr("transform", event.transform);
             });
 
+        zoomRef.current = zoom as any;
         svg.call(zoom as any);
 
         // Theme Colors
@@ -62,6 +124,10 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
         const nodeFill = isDark ? "#69b3a2" : "#0f766e"; // Teal
         const iconColor = isDark ? "#fff" : "#fff"; // White icons on Teal
 
+        // Search Highlighting Colors
+        const dimOpacity = 0.1;
+        const matchFill = "#d97706"; // Amber
+
         // Links
         const link = g.append("g")
             .attr("stroke", linkColor)
@@ -69,7 +135,8 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
             .selectAll("line")
             .data(links)
             .join("line")
-            .attr("stroke-width", 1.5);
+            .attr("stroke-width", 1.5)
+            .attr("class", "link");
 
         // Nodes Group
         const node = g.append("g")
@@ -77,6 +144,7 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
             .data(nodes)
             .join("g")
             .style("cursor", "pointer")
+            .attr("class", "node")
             .call(d3.drag()
                 .on("start", (event, d: any) => {
                     if (!event.active) simulation.alphaTarget(0.3).restart();
@@ -122,10 +190,10 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
         node.append("text")
             .text((d: any) => d.title)
             .attr("x", 0)
-            .attr("y", 32) // Below the circle (20 radius + padding)
+            .attr("y", 32)
             .attr("text-anchor", "middle")
             .style("font-size", "12px")
-            .style("fill", "var(--foreground)")
+            .style("fill", isDark ? "#ffffff" : "#1c1917") // Explicit color
             .style("pointer-events", "none")
             .style("font-weight", "500")
             .style("text-shadow", isDark ? "0px 1px 2px #000" : "none");
@@ -141,15 +209,39 @@ export default function VectorMap2D({ topics, edgesData }: VectorMap2DProps) {
             node.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
         });
 
+        // Expose simulation for search updates if needed, logic handled in separate effect below
+
         return () => {
             simulation.stop();
         };
-    }, [nodes, links, router, isDark]); // Added isDark to dependency to redraw on theme change
+    }, [nodes, links, router, isDark]);
+
+    // Search Effect
+    useEffect(() => {
+        if (!svgRef.current) return;
+        const svg = d3.select(svgRef.current);
+        const term = mapSearchTerm.toLowerCase();
+
+        svg.selectAll(".node").style("opacity", (d: any) => {
+            if (!term) return 1;
+            return d.title.toLowerCase().includes(term) ? 1 : 0.1;
+        });
+
+        svg.selectAll(".link").style("opacity", (d: any) => {
+            if (!term) return 0.6;
+            const sourceMatch = d.source.title?.toLowerCase().includes(term);
+            const targetMatch = d.target.title?.toLowerCase().includes(term);
+            return (sourceMatch || targetMatch) ? 0.6 : 0.05;
+        });
+
+    }, [mapSearchTerm]);
 
 
     return (
-        <div ref={containerRef} className="w-full h-full bg-background/50">
-            <svg ref={svgRef} className="w-full h-full block" />
+        <div className="w-full h-full relative group/container font-sans">
+            <div ref={containerRef} className="w-full h-full bg-background/50">
+                <svg ref={svgRef} className="w-full h-full block" />
+            </div>
         </div>
     );
 }

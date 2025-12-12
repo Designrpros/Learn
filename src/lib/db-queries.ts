@@ -1,10 +1,27 @@
 import { db } from '@/db';
 import { topics, chapters, events, threads, posts, threadTags, faqs } from '@/db/schema';
-import { eq, asc, desc } from 'drizzle-orm';
+import { eq, asc, desc, isNull } from 'drizzle-orm';
 
 export const revalidate = 0; // Ensure fresh data fetching
 
-export async function getAllTopics() {
+export async function getAllTopics(searchQuery?: string) {
+    if (searchQuery) {
+        return await db.query.topics.findMany({
+            where: (topics, { ilike, or }) => or(
+                ilike(topics.title, `%${searchQuery}%`),
+                ilike(topics.overview, `%${searchQuery}%`)
+            ),
+            orderBy: [asc(topics.title)],
+            columns: {
+                id: true,
+                title: true,
+                slug: true,
+                overview: true,
+                createdAt: true,
+            },
+        });
+    }
+
     return await db.query.topics.findMany({
         orderBy: [asc(topics.title)],
         columns: {
@@ -14,6 +31,38 @@ export async function getAllTopics() {
             overview: true,
             createdAt: true,
         },
+    });
+}
+
+// --- TREE FETCHING (LAZY LOAD) ---
+export async function getTopicChildren(parentId: string | null = null) {
+    // If parentId is null, fetch roots (where parentId is null)
+    // Otherwise fetch children of parentId
+    const where = parentId ? eq(topics.parentId, parentId) : isNull(topics.parentId);
+
+    return await db.query.topics.findMany({
+        where,
+        orderBy: [asc(topics.order), asc(topics.title)],
+        columns: {
+            id: true,
+            title: true,
+            slug: true,
+            icon: true,
+            order: true,
+        },
+        with: {
+            // We need to know if it HAS children to show the expand arrow
+            // But we don't want to fetch all children recursively.
+            // A simple way is to fetch just ID of children, or use a count if supported.
+            // Drizzle doesn't do "has element" validation easily in relation query without fetching.
+            // We'll fetch just ids of children.
+            children: {
+                columns: {
+                    id: true
+                },
+                limit: 1 // We only need to know if > 0 exists
+            }
+        }
     });
 }
 
@@ -157,10 +206,26 @@ export async function getThreadsByTopic(topicId: string) {
     });
 }
 
-export async function getThreads(category?: string) {
-    const where = category ? eq(threads.category, category) : undefined;
+export async function getThreads(category?: string, searchQuery?: string) {
+    const filters = [];
+    if (category) filters.push(eq(threads.category, category));
+
+    // Manual search query construction since we need helper functions from 'where' callback
+    // But direct array 'and' is cleaner
+    // However, Drizzle's 'ilike' usually needs to come from the callback arg in 'findMany'
+
+    // Strategy: Use the findMany 'where' callback completely
     return await db.query.threads.findMany({
-        where,
+        where: (threads, { eq, and, ilike, or }) => {
+            const conditions = [];
+            if (category) conditions.push(eq(threads.category, category));
+            if (searchQuery) {
+                conditions.push(or(
+                    ilike(threads.title, `%${searchQuery}%`)
+                ));
+            }
+            return and(...conditions);
+        },
         orderBy: [desc(threads.createdAt)],
         with: {
             tags: {
@@ -217,4 +282,31 @@ export async function searchTopics(query: string) {
     });
 
     return results;
+}
+
+export async function getWikiFilters() {
+    // Fetch Root topics (Level 1)
+    const roots = await db.query.topics.findMany({
+        where: (topics, { isNull }) => isNull(topics.parentId),
+        orderBy: (topics, { asc }) => [asc(topics.order), asc(topics.title)],
+        columns: {
+            id: true,
+            title: true,
+            slug: true,
+            icon: true,
+        },
+        with: {
+            children: {
+                columns: {
+                    id: true,
+                    title: true,
+                    slug: true,
+                    icon: true,
+                },
+                orderBy: (topics, { asc }) => [asc(topics.order), asc(topics.title)],
+            }
+        }
+    });
+
+    return roots;
 }
