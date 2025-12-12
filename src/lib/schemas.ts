@@ -15,5 +15,6 @@ export const syllabusSchema = z.object({
     relatedTopics: z.array(z.object({
         topic: z.string().describe("Name of a related topic"),
         type: z.enum(["prerequisite", "extension", "related"]).describe("Relationship type"),
+        suggestedParent: z.string().describe("The name of the parent category this topic belongs to (e.g. 'Physics', 'Sports'). MUST be an existing category from the Knowledge Tree if possible."),
     })).describe("3-5 related topics to expand the knowledge graph"),
 });
