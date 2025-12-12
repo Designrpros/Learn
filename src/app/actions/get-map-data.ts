@@ -9,10 +9,11 @@ export async function getMapData() {
                 id: true,
                 title: true,
                 slug: true,
+                parentId: true,
             }
         });
 
-        const edges = await db.query.relationships.findMany({
+        const dbEdges = await db.query.relationships.findMany({
             columns: {
                 id: true,
                 sourceTopicId: true,
@@ -20,6 +21,18 @@ export async function getMapData() {
                 type: true,
             }
         });
+
+        // Infer Hierarchy Edges
+        const hierarchyEdges = topics
+            .filter(t => t.parentId)
+            .map(t => ({
+                id: `hierarchy-${t.id}`,
+                sourceTopicId: t.parentId!,
+                targetTopicId: t.id,
+                type: 'hierarchy'
+            }));
+
+        const edges = [...dbEdges, ...hierarchyEdges];
 
         return { topics, edges };
     } catch (error) {
