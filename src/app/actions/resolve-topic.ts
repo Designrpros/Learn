@@ -11,6 +11,8 @@ function slugify(text: string) {
     return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 }
 
+import { WIKIPEDIA_OUTLINE } from '@/lib/wikipedia-outline';
+
 export async function resolveTopic(query: string): Promise<string> {
     const cleanQuery = query.trim();
     if (!cleanQuery) return "";
@@ -25,90 +27,111 @@ export async function resolveTopic(query: string): Promise<string> {
     }
 
     try {
-        // 3. AI Resolution
-        // We use a cheap call to distill the topic AND find a category.
+        // Flatten Outline for Context (Level 1 & 2)
+        const outlineContext = WIKIPEDIA_OUTLINE.map(root => {
+            const children = root.children?.map(c => c.title).join(", ");
+            return `- ${root.title}: [${children || ""}]`;
+        }).join("\n");
+
+        // 3. AI Resolution with Strict Hierarchy
         const result = await generateObject({
             model: defaultModel,
             schema: z.object({
-                topic: z.string().describe("The canonical, encyclopedic topic title (e.g. 'Cricket', 'Quantum Physics')."),
-                category: z.string().describe("The broad parent category this belongs to (e.g. 'Sports', 'Science', 'History')."),
-                confidence: z.number().describe("Confidence score 0-1")
+                topic: z.string().describe("The canonical topic title"),
+                path: z.array(z.string()).describe("The hierarchical path starting from a Root Category down to the direct parent. MUST use existing categories from the provided list if possible.")
             }),
-            prompt: `Analyze this search query and identify the specific topic and its broad category.
+            prompt: `Analyze this search query and identify the specific topic and its hierarchical path within the Knowledge Tree.
+            
+            EXISTING KNOWLEDGE TREE (Roots and Major Categories):
+            ${outlineContext}
+
+            RULES:
+            1. The 'path' array MUST start with one of the Root Categories from the list above (e.g. "Technology", "Human Activities", "Arts").
+            2. You can add intermediate sub-categories to the path if they don't exist, but try to use existing keys.
+            3. The last item in the 'path' will be the direct parent of the new topic.
+
             Query: "${cleanQuery}"
             
-            Examples:
-            "how to play cricket" -> Topic: "Cricket", Category: "Sports"
-            "tell me about napoleon" -> Topic: "Napoleon Bonaparte", Category: "History"
-            "react hooks" -> Topic: "React (JavaScript Library)", Category: "Computer Science"
+            Example:
+            Query: "Plumbing"
+            Topic: "Plumbing"
+            Path: ["Technology", "Engineering", "Civil Engineering"]
+            (Result: Technology -> Engineering -> Civil Engineering -> Plumbing)
             `
         });
 
         const refinedTopic = result.object.topic;
-        const parentCategory = result.object.category;
         const refinedSlug = slugify(refinedTopic);
+        const path = result.object.path;
 
-        console.log(`[Smart Resolve] "${query}" -> Topic: "${refinedTopic}" (slug: ${refinedSlug}), Category: "${parentCategory}"`);
+        console.log(`[Smart Resolve] "${query}" -> Topic: "${refinedTopic}" Path: [${path.join(" > ")}]`);
 
-        // Check if topic exists (by new refined slug)
+        // Check availability
         const existingRefined = await db.query.topics.findFirst({
             where: eq(topics.slug, refinedSlug)
         });
         if (existingRefined) return existingRefined.slug;
 
-        // --- Create Logic ---
-        // 1. Resolve Parent Category
-        let parentId: string | null = null;
-        if (parentCategory) {
-            const catSlug = slugify(parentCategory);
-            const existingCat = await db.query.topics.findFirst({ where: eq(topics.slug, catSlug) });
+        // --- Recursive Path Resolution ---
+        let currentParentId: string | null = null;
 
-            if (existingCat) {
-                parentId = existingCat.id;
-            } else {
-                // Create Category Stub
+        // Iterate through path to resolve/create parents
+        for (const segment of path) {
+            const segmentSlug = slugify(segment);
+
+            // 1. Check if this segment exists (under the current parent? OR Global unique slug?)
+            // We use global slug uniqueness for simplicity in this MVP.
+            // Ideally we check parentId too, but let's assume slug collision implies same topic.
+            let segmentTopic: typeof topics.$inferSelect | undefined = await db.query.topics.findFirst({
+                where: eq(topics.slug, segmentSlug)
+            });
+
+            if (!segmentTopic) {
+                // Create Intermediate Stub
                 try {
-                    const [newCat] = await db.insert(topics).values({
-                        title: parentCategory,
-                        slug: catSlug,
+                    console.log(`[Smart Resolve] Creating Intermediate Node: "${segment}" (Parent: ${currentParentId})`);
+                    const results: (typeof topics.$inferSelect)[] = await db.insert(topics).values({
+                        title: segment,
+                        slug: segmentSlug,
                         overview: "Category",
+                        parentId: currentParentId, // Link to previous node in path
                         isPublic: true,
-                        creatorId: "system-resolver"
+                        creatorId: null // System/Intermediate (Strict Parenting treats null as System)
                     }).returning();
-                    parentId = newCat.id;
-                    console.log(`[Smart Resolve] Created new Category: "${parentCategory}"`);
+
+                    if (results && results.length > 0) {
+                        segmentTopic = results[0];
+                    }
                 } catch (e) {
-                    // Race condition ignoring
-                    const retryCat = await db.query.topics.findFirst({ where: eq(topics.slug, catSlug) });
-                    if (retryCat) parentId = retryCat.id;
+                    // Race condition handle
+                    segmentTopic = await db.query.topics.findFirst({ where: eq(topics.slug, segmentSlug) });
                 }
+            }
+
+            if (segmentTopic) {
+                currentParentId = segmentTopic.id;
             }
         }
 
-        // 2. Create The Topic Stub (so the page has something to load)
+        // 2. Create The Final Topic Stub
         try {
             await db.insert(topics).values({
                 title: refinedTopic,
                 slug: refinedSlug,
                 overview: "",
-                parentId: parentId, // Link to Category!
+                parentId: currentParentId, // Link to last resolved node
                 isPublic: true,
                 creatorId: "user_smart_search"
             });
-            console.log(`[Smart Resolve] Created Topic Stub: "${refinedTopic}" under "${parentCategory}"`);
-        } catch (e: any) {
-            if (e.code === '23505' || e.message?.includes('duplicate key')) {
-                // Already exists, just flow through
-            } else {
-                console.error("[Smart Resolve] Error creating topic stub:", e);
-            }
+            console.log(`[Smart Resolve] Created Topic Stub: "${refinedTopic}" under ParentID: ${currentParentId}`);
+        } catch (e) {
+            console.error("[Smart Resolve] Error creating final topic:", e);
         }
 
         return refinedSlug;
 
     } catch (e) {
         console.error("Smart Resolve Failed", e);
-        // Fallback to original query slug if AI fails
         return simpleSlug;
     }
 }
