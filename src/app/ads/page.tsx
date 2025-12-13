@@ -36,26 +36,26 @@ export default function AdsDashboardPage() {
 
     return (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, backgroundColor: '#050505', overflowY: 'auto' }}>
-            <div className="max-w-7xl mx-auto p-6 lg:p-12 text-white font-sans">
+            <div className="max-w-7xl mx-auto p-4 lg:p-12 text-white font-sans">
 
                 {/* Header */}
-                <div className="flex items-center justify-between mb-12">
+                <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 md:mb-12 gap-6 md:gap-0">
                     <div>
                         <Link href="/" className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-2 text-sm">
                             <ArrowLeft className="w-4 h-4" />
                             Back to App
                         </Link>
-                        <h1 className="text-3xl font-bold tracking-tight mb-2">Ads Manager</h1>
-                        <p className="text-neutral-400">Manage your campaigns and track performance.</p>
+                        <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">Ads Manager</h1>
+                        <p className="text-neutral-400 text-sm md:text-base">Manage your campaigns and track performance.</p>
                     </div>
-                    <div className="flex gap-4">
-                        <Button variant="outline" className="border-neutral-800 text-neutral-300 hover:text-white" asChild>
+                    <div className="flex gap-4 w-full md:w-auto">
+                        <Button variant="outline" className="flex-1 md:flex-none border-neutral-800 bg-neutral-900/50 text-neutral-300 hover:text-white hover:bg-neutral-800" asChild>
                             <Link href="/ads/analytics">
                                 <BarChart3 className="w-4 h-4 mr-2" />
                                 View Analytics
                             </Link>
                         </Button>
-                        <Button className="bg-indigo-600 hover:bg-indigo-500 text-white" asChild>
+                        <Button className="flex-1 md:flex-none bg-white text-black hover:bg-neutral-200" asChild>
                             <Link href="/ads/new">
                                 <Plus className="w-4 h-4 mr-2" />
                                 Create Campaign
@@ -65,7 +65,7 @@ export default function AdsDashboardPage() {
                 </div>
 
                 {/* KPI Grid */}
-                <div className="grid gap-6 md:grid-cols-4 mb-12">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-12">
                     <KpiCard title="Total Spend" value={`$${kpis.spend?.toLocaleString()}`} icon={DollarSign} trend="-" />
                     <KpiCard title="Impressions" value={kpis.impressions?.toLocaleString()} icon={BarChart3} trend="-" />
                     <KpiCard title="Clicks" value={kpis.clicks?.toLocaleString()} icon={MousePointer2} trend="-" />
@@ -77,18 +77,18 @@ export default function AdsDashboardPage() {
                     <CardHeader>
                         <CardTitle className="text-white">Active Campaigns</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-0 sm:p-6">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
+                            <table className="w-full text-left text-sm min-w-[800px] sm:min-w-0">
                                 <thead className="text-neutral-500 border-b border-neutral-800">
                                     <tr>
-                                        <th className="pb-4 font-medium pl-4">Status</th>
+                                        <th className="pb-4 font-medium pl-4 sm:pl-0">Status</th>
                                         <th className="pb-4 font-medium w-1/3">Campaign Name</th>
-                                        <th className="pb-4 font-medium">Budget</th>
+                                        <th className="pb-4 font-medium hidden md:table-cell">Budget</th>
                                         <th className="pb-4 font-medium">Spend</th>
-                                        <th className="pb-4 font-medium">Impressions</th>
+                                        <th className="pb-4 font-medium hidden md:table-cell">Impressions</th>
                                         <th className="pb-4 font-medium">Results</th>
-                                        <th className="pb-4 font-medium pr-4">Duration</th>
+                                        <th className="pb-4 font-medium pr-4 sm:pr-0 text-right sm:text-left">Duration</th>
                                     </tr>
                                 </thead>
                                 <tbody className="text-neutral-300">
@@ -113,8 +113,8 @@ export default function AdsDashboardPage() {
                                                     name={c.name}
                                                     budget={`$${c.dailyBudget}/day`}
                                                     spend={`$${c.metrics?.spend || 0}`}
-                                                    impressions={hasMetrics ? c.metrics.impressions : <span className="text-neutral-500 italic">{estImpressions} (est.)</span>}
-                                                    results={hasMetrics ? `${c.metrics.clicks} Clicks` : <span className="text-neutral-500 italic">{estClicks} Clicks (est.)</span>}
+                                                    impressions={hasMetrics ? c.metrics.impressions : <span className="text-neutral-500 italic">{estImpressions}</span>}
+                                                    results={hasMetrics ? `${c.metrics.clicks} Clicks` : <span className="text-neutral-500 italic">{estClicks} Clicks</span>}
                                                     end={`${c.durationDays} days`}
                                                 />
                                             );
@@ -180,7 +180,7 @@ function CampaignRow({ id, status, name, budget, spend, impressions, results, en
             className="border-b border-neutral-800/50 hover:bg-neutral-800/20 transition-colors cursor-pointer group"
             onClick={() => router.push(`/ads/${id}`)}
         >
-            <td className="py-4 pl-4">
+            <td className="py-4 pl-4 sm:pl-0">
                 <Badge variant="outline" className={`
                     ${status === 'Active' ? 'text-emerald-500 border-emerald-500/20 bg-emerald-500/10' : ''}
                     ${status === 'Paused' ? 'text-yellow-500 border-yellow-500/20 bg-yellow-500/10' : ''}
@@ -190,16 +190,16 @@ function CampaignRow({ id, status, name, budget, spend, impressions, results, en
                 </Badge>
             </td>
             <td className="py-4 font-medium text-white">{name}</td>
-            <td className="py-4 text-neutral-400">{budget}</td>
+            <td className="py-4 text-neutral-400 hidden md:table-cell">{budget}</td>
             <td className="py-4 text-white">{spend}</td>
-            <td className="py-4 text-neutral-400">{impressions}</td>
+            <td className="py-4 text-neutral-400 hidden md:table-cell">{impressions}</td>
             <td className="py-4 text-neutral-400">{results}</td>
-            <td className="py-4 text-neutral-500 pr-4 flex items-center justify-between">
+            <td className="py-4 text-neutral-500 pr-4 sm:pr-0 text-right sm:text-left flex items-center justify-end sm:justify-between">
                 <span>{end}</span>
                 <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-neutral-600 hover:text-red-400 hover:bg-red-900/10 opacity-0 group-hover:opacity-100 transition-all"
+                    className="h-8 w-8 text-neutral-600 hover:text-red-400 hover:bg-red-900/10 opacity-0 group-hover:opacity-100 transition-all ml-2"
                     onClick={handleDelete}
                 >
                     <Trash2 className="w-4 h-4" />

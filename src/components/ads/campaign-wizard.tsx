@@ -209,22 +209,22 @@ export default function CampaignWizard({ initialData, isEditMode = false }: Camp
 
     return (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, backgroundColor: '#050505', overflowY: 'auto' }}>
-            <div className="w-full max-w-[1600px] mx-auto p-6 lg:p-10">
+            <div className="w-full max-w-[1600px] mx-auto p-4 md:p-6 lg:p-10">
 
                 {/* Header */}
-                <header className="flex items-center justify-between mb-12 border-b border-neutral-800 pb-6 sticky top-0 bg-[#050505]/95 backdrop-blur-md z-50">
-                    <div className="flex items-center gap-4">
+                <header className="flex flex-col md:flex-row items-center md:justify-between mb-8 md:mb-12 border-b border-neutral-800 pb-4 md:pb-6 sticky top-0 bg-[#050505]/95 backdrop-blur-md z-50 gap-4 md:gap-0">
+                    <div className="flex items-center justify-between w-full md:w-auto gap-4">
                         <Link href="/ads" className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors group">
                             <div className="p-2 rounded-full bg-neutral-900 group-hover:bg-neutral-800 transition-colors">
                                 <ArrowLeft className="w-4 h-4" />
                             </div>
                         </Link>
-                        <h1 className="text-xl font-bold bg-gradient-to-r from-white to-neutral-500 bg-clip-text text-transparent">
+                        <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-white to-neutral-500 bg-clip-text text-transparent truncate">
                             {isEditMode ? "Edit Campaign" : "Create Campaign"}
                         </h1>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="text-right hidden md:block">
+                    <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                        <div className="text-right hidden lg:block">
                             <div className="text-sm font-semibold text-neutral-200">
                                 {isEditMode ? "Editing..." : "Draft saved"}
                             </div>
@@ -232,14 +232,14 @@ export default function CampaignWizard({ initialData, isEditMode = false }: Camp
                         </div>
                         <Button
                             variant="outline"
-                            className="border-neutral-800 text-neutral-300"
+                            className="border-neutral-800 bg-neutral-900/50 text-neutral-300 hover:text-white hover:bg-neutral-800"
                             onClick={() => handleSubmit('draft')}
                             disabled={isSubmitting}
                         >
                             Save Draft
                         </Button>
                         <Button
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white"
+                            className="bg-white text-black hover:bg-neutral-200"
                             onClick={() => handleSubmit('active')}
                             disabled={isSubmitting}
                         >
@@ -250,7 +250,7 @@ export default function CampaignWizard({ initialData, isEditMode = false }: Camp
                     </div>
                 </header>
 
-                <main className="grid lg:grid-cols-12 gap-12 w-full pb-32">
+                <main className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 w-full pb-32">
 
                     {/* LEFT: Form Sections */}
                     <div className="lg:col-span-7 space-y-12">
@@ -267,7 +267,7 @@ export default function CampaignWizard({ initialData, isEditMode = false }: Camp
                                 </div>
                             </div>
 
-                            <div className="ml-12 p-6 rounded-xl bg-[#0a0a0a] border border-neutral-800 space-y-8">
+                            <div className="mt-4 lg:mt-0 lg:ml-12 p-4 md:p-6 rounded-xl bg-[#0a0a0a] border border-neutral-800 space-y-6 md:space-y-8">
                                 {/* Asset Upload */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium text-neutral-300">Images or Video <span className="text-red-500">*</span></label>
@@ -384,7 +384,7 @@ export default function CampaignWizard({ initialData, isEditMode = false }: Camp
                                 </div>
                             </div>
 
-                            <div className="ml-12 p-6 rounded-xl bg-[#0a0a0a] border border-neutral-800 space-y-8">
+                            <div className="mt-4 lg:mt-0 lg:ml-12 p-4 md:p-6 rounded-xl bg-[#0a0a0a] border border-neutral-800 space-y-6 md:space-y-8">
                                 {/* Map */}
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
@@ -521,7 +521,7 @@ export default function CampaignWizard({ initialData, isEditMode = false }: Camp
                                 <h2 className="text-xl font-semibold text-white">Payment</h2>
                             </div>
 
-                            <div className="ml-12 p-6 rounded-xl bg-[#0a0a0a] border border-neutral-800 space-y-6">
+                            <div className="mt-4 lg:mt-0 lg:ml-12 p-4 md:p-6 rounded-xl bg-[#0a0a0a] border border-neutral-800 space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div
                                         className={`p-4 rounded-lg border cursor-pointer transition-all ${paymentMethod === 'stripe' ? 'bg-indigo-500/10 border-indigo-500 ring-1 ring-indigo-500' : 'bg-neutral-900 border-neutral-800 hover:border-neutral-700'}`}

@@ -288,3 +288,12 @@ export const featureFlags = pgTable('feature_flags', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// --- SYSTEM SETTINGS ---
+// Global key-value store for dynamic configuration (e.g., limits, announcements)
+export const systemSettings = pgTable('system_settings', {
+    key: text('key').primaryKey(), // e.g. "daily_generation_limit"
+    value: text('value').notNull(), // e.g. "50" (parsed by application)
+    description: text('description'), // Admin-facing label
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});

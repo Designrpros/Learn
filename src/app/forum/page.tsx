@@ -1,7 +1,9 @@
 import { getThreads, getTrendingTopics, getForumStats } from "@/lib/db-queries";
+import { getAdToDisplay } from "@/lib/actions/ads";
 import { SearchInput } from '@/components/ui/search-input';
 import { ForumList } from '@/components/forum/forum-list';
 import { ForumFilters } from '@/components/forum/forum-filters';
+import { AdBanner } from '@/components/ads/ad-banner';
 import { PlusCircle, Info, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { CreateThreadButton } from '@/components/forum/create-thread-button';
@@ -21,6 +23,7 @@ export default async function ForumPage({
 
     const trendingTopics = await getTrendingTopics();
     const stats = await getForumStats();
+    const ad = await getAdToDisplay();
 
     return (
         <div className="min-h-screen pt-24 pb-32 px-4 md:px-8 max-w-7xl mx-auto">
@@ -69,10 +72,12 @@ export default async function ForumPage({
                 {/* Right Sidebar (Desktop) */}
                 <div className="hidden lg:col-span-4 lg:block space-y-6">
                     {/* Create Post Widget */}
-                    <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
-                        <div className="flex items-center gap-2 mb-4 font-semibold text-foreground">
-                            <PlusCircle className="w-5 h-5 text-primary" />
-                            <span>Contribute</span>
+                    <div className="bg-muted/30 border border-dashed border-border rounded-xl p-6 text-center">
+                        <div className="flex flex-col items-center gap-2 mb-4">
+                            <div className="rounded-full bg-background p-2.5 text-muted-foreground shadow-sm ring-1 ring-border">
+                                <PlusCircle className="w-5 h-5 text-primary" />
+                            </div>
+                            <h3 className="font-semibold text-foreground">Contribute</h3>
                         </div>
                         <p className="text-sm text-muted-foreground mb-4">
                             Start a new discussion or ask a question to the community.
@@ -81,16 +86,16 @@ export default async function ForumPage({
                     </div>
 
                     {/* Community Info Widget */}
-                    <div className="bg-muted/30 border border-border/50 rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-3 font-semibold text-foreground/80">
+                    <div className="bg-muted/30 border border-dashed border-border rounded-xl p-6">
+                        <div className="flex items-center gap-2 mb-4 font-semibold text-foreground/80">
                             <Info className="w-4 h-4" />
                             <span>About</span>
                         </div>
-                        <div className="text-sm text-muted-foreground space-y-3">
+                        <div className="text-sm text-muted-foreground space-y-4">
                             <p>
                                 Welcome to the Wikits Community. A place for learners and experts to connect.
                             </p>
-                            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/40">
+                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-dashed border-border">
                                 <div>
                                     <div className="font-bold text-foreground">{stats.members}</div>
                                     <div className="text-xs">Members</div>
@@ -107,21 +112,24 @@ export default async function ForumPage({
                     </div>
 
                     {/* Trending (Desktop Vertical) */}
-                    <div className="bg-card border border-border rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-3 font-semibold text-foreground/80">
+                    <div className="bg-muted/30 border border-dashed border-border rounded-xl p-6">
+                        <div className="flex items-center gap-2 mb-4 font-semibold text-foreground/80">
                             <TrendingUp className="w-4 h-4 text-orange-500" />
                             <span>Trending Topics</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {trendingTopics.map(topic => (
                                 <Link key={topic.slug} href={`/wiki/${topic.slug}/forum`}>
-                                    <span className="px-2 py-1 bg-muted rounded-full text-xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors block">
+                                    <span className="px-3 py-1.5 bg-background border border-border/50 rounded-full text-xs text-muted-foreground hover:text-foreground hover:border-foreground/20 cursor-pointer transition-all block">
                                         w/{topic.title}
                                     </span>
                                 </Link>
                             ))}
                         </div>
                     </div>
+
+                    {/* Ad Banner */}
+                    <AdBanner ad={ad} />
                 </div>
             </div>
         </div>

@@ -5,6 +5,8 @@ import { db } from "@/db";
 import { events } from "@/db/schema";
 import { and, eq, sql, gte, lt } from "drizzle-orm";
 
+import { getSystemSetting } from "@/lib/settings";
+
 export interface UsageStats {
     used: number;
     limit: number;
@@ -12,7 +14,10 @@ export interface UsageStats {
 
 export async function getUsageStats(): Promise<UsageStats> {
     const { userId } = await auth();
-    if (!userId) return { used: 0, limit: 10 }; // Default for guests
+    if (!userId) {
+        // Guest limit could also be dynamic if needed, but keeping simple for now
+        return { used: 0, limit: 10 };
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -32,8 +37,9 @@ export async function getUsageStats(): Promise<UsageStats> {
             )
         );
 
-    // Define limits (could be dynamic based on plan later)
-    const limit = 50;
+    // Fetch dynamic limit
+    const limitStr = await getSystemSetting("daily_generation_limit");
+    const limit = parseInt(limitStr, 10) || 50;
 
     return {
         used: Number(result?.count || 0),

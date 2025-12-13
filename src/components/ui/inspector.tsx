@@ -2,9 +2,10 @@
 
 import { useUIStore } from "@/lib/ui-store";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Search, Activity, Settings, Download, User, LogIn, Bell, MessageCircle, Heart, ExternalLink, Cpu } from "lucide-react";
+import { X, Search, Activity, Settings, Download, User, LogIn, Bell, MessageCircle, Heart, ExternalLink, Cpu, Rocket } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 import { getRecentActivity } from "@/app/actions/get-activity";
 import { getNotifications, type NotificationItem } from "@/app/actions/get-notifications";
@@ -303,6 +304,22 @@ export function Inspector() {
                                                     <span className="text-xs text-muted-foreground">Dark</span>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
+
+                                    {/* COMMERCIAL / ADVERTISE */}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1">Business</label>
+                                        <div className="space-y-0.5">
+                                            <Link href="/ads" className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-lg transition-colors cursor-pointer group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-1.5 bg-indigo-500/10 text-indigo-500 rounded-md">
+                                                        <Rocket className="w-3.5 h-3.5" />
+                                                    </div>
+                                                    <span className="text-sm">Advertise on Wikits</span>
+                                                </div>
+                                                <div className="opacity-0 group-hover:opacity-100 text-muted-foreground">→</div>
+                                            </Link>
                                         </div>
                                     </div>
 

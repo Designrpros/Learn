@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { KPICard } from "@/components/admin/kpi-card";
-import { Activity, ShieldAlert, Zap, DollarSign, Users, Mail, Flag } from "lucide-react";
+import { Activity, ShieldAlert, Zap, DollarSign, Users, Mail, Flag, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -157,6 +157,25 @@ export default async function AdminOverviewPage() {
                             </div>
                             <Button className="w-full bg-white text-black hover:bg-neutral-200" asChild>
                                 <Link href="/admin/moderation">Moderation Queue</Link>
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    {/* System Settings Link */}
+                    <Card className="bg-neutral-900/50 backdrop-blur-sm border-neutral-800">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-white text-base flex items-center gap-2">
+                                <Settings className="w-4 h-4 text-neutral-400" />
+                                System Configuration
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-sm text-neutral-400">Global Settings</span>
+                                <span className="text-xs text-neutral-500">Limits, Flags</span>
+                            </div>
+                            <Button variant="outline" className="w-full border-neutral-800 text-neutral-300 hover:text-white" asChild>
+                                <Link href="/admin/settings">Manage Settings</Link>
                             </Button>
                         </CardContent>
                     </Card>
