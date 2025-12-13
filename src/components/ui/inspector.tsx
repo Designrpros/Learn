@@ -2,12 +2,14 @@
 
 import { useUIStore } from "@/lib/ui-store";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Search, Activity, Settings, Download, User, LogIn, Bell, MessageCircle, Heart } from "lucide-react";
+import { X, Search, Activity, Settings, Download, User, LogIn, Bell, MessageCircle, Heart, ExternalLink, Cpu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
 import { getRecentActivity } from "@/app/actions/get-activity";
 import { getNotifications, type NotificationItem } from "@/app/actions/get-notifications";
+import { getSystemStatus, type SystemStatus } from "@/app/actions/get-system-status";
+import { getUsageStats, type UsageStats } from "@/app/actions/get-usage-stats";
 
 export function Inspector() {
     const { isInspectorOpen, setInspectorOpen, setDashboardOpen } = useUIStore();
@@ -18,17 +20,24 @@ export function Inspector() {
     const [activityData, setActivityData] = useState<any[]>([]);
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
+    // Live Telemetry State
+    const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
+    const [usageStats, setUsageStats] = useState<UsageStats>({ used: 0, limit: 50 });
+
     useEffect(() => {
         if (isInspectorOpen) {
-            if (isSignedIn) {
-                // Fetch Activity
-                getRecentActivity().then(data => setActivityData(data));
+            // Always fetch system status
+            getSystemStatus().then(setSystemStatus);
 
-                // Fetch Notifications (Inbox)
+            if (isSignedIn) {
+                // Fetch User Data
+                getRecentActivity().then(data => setActivityData(data));
                 getNotifications().then(data => setNotifications(data));
+                getUsageStats().then(setUsageStats);
             } else {
                 setActivityData([]);
                 setNotifications([]);
+                setUsageStats({ used: 0, limit: 10 });
             }
         }
     }, [isInspectorOpen, isSignedIn]);
@@ -243,16 +252,21 @@ export function Inspector() {
                                                 </SignOutButton>
                                             </div>
 
-                                            {/* Usage Stats (Essential) */}
+                                            {/* Usage Stats (Live) */}
                                             <div className="bg-background rounded-lg border border-border/50 p-3 space-y-2">
                                                 <div className="flex justify-between items-end">
                                                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Daily Generations</span>
-                                                    <span className="text-[10px] font-medium">12 / 50</span>
+                                                    <span className="text-[10px] font-medium font-mono">{usageStats.used} / {usageStats.limit}</span>
                                                 </div>
                                                 <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                                                    <div className="h-full bg-primary w-[24%]" />
+                                                    <div
+                                                        className="h-full bg-primary transition-all duration-1000"
+                                                        style={{ width: `${Math.min((usageStats.used / usageStats.limit) * 100, 100)}%` }}
+                                                    />
                                                 </div>
-                                                <p className="text-[10px] text-muted-foreground">Resets in 14 hours</p>
+                                                <div className="flex justify-between text-[10px] text-muted-foreground">
+                                                    <span>Resets in 14 hours</span>
+                                                </div>
                                             </div>
                                         </div>
                                     ) : (
@@ -361,6 +375,8 @@ export function Inspector() {
                                                 </div>
                                                 <div className="opacity-0 group-hover:opacity-100 text-muted-foreground">→</div>
                                             </a>
+
+                                            {/* Peak Browser Integration */}
                                             <a
                                                 href="https://peak-browser.vercel.app/"
                                                 target="_blank"
@@ -368,11 +384,16 @@ export function Inspector() {
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-1.5 bg-orange-500/10 text-orange-500 rounded-md">
-                                                        <Download className="w-3.5 h-3.5" />
+                                                        <ExternalLink className="w-3.5 h-3.5" />
                                                     </div>
-                                                    <span className="text-sm">Export Data</span>
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium">Synced with Peak</span>
+                                                        <span className="text-[10px] text-muted-foreground">Partner Application</span>
+                                                    </div>
                                                 </div>
+                                                <ExternalLink className="w-3 h-3 text-muted-foreground opacity-50 group-hover:opacity-100" />
                                             </a>
+
                                             <button
                                                 onClick={() => {
                                                     setInspectorOpen(false);
@@ -391,15 +412,35 @@ export function Inspector() {
                                         </div>
                                     </div>
 
-                                    {/* FOOTER INFO */}
-                                    <div className="pt-6 border-t border-border/30 text-center space-y-2">
-                                        <div className="flex justify-center gap-4 text-[10px] text-muted-foreground/60">
-                                            <span>Wikits v1.0.0</span>
-                                            <span>•</span>
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                                <span>Systems Operational</span>
+                                    {/* SYSTEM STATUS (Telemetery) */}
+                                    <div className="pt-6 border-t border-border/30 space-y-3">
+                                        <div className="flex items-center justify-between px-1">
+                                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                                <Cpu className="w-3 h-3" /> System Status
                                             </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                <span className="text-[10px] text-emerald-500 font-medium">Live</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div className="bg-muted/30 p-2 rounded border border-border/30 flex flex-col items-center">
+                                                <span className="text-[10px] text-muted-foreground uppercase">Lat.</span>
+                                                <span className="text-xs font-mono font-medium">{systemStatus?.dbLatency || '...'}</span>
+                                            </div>
+                                            <div className="bg-muted/30 p-2 rounded border border-border/30 flex flex-col items-center">
+                                                <span className="text-[10px] text-muted-foreground uppercase">Vec.</span>
+                                                <span className="text-xs font-mono font-medium">{systemStatus?.vectorIndex || '...'}</span>
+                                            </div>
+                                            <div className="bg-muted/30 p-2 rounded border border-border/30 flex flex-col items-center">
+                                                <span className="text-[10px] text-muted-foreground uppercase">Cache</span>
+                                                <span className="text-xs font-mono font-medium">{systemStatus?.cacheHit || '...'}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="text-center text-[10px] text-muted-foreground/60 pt-2">
+                                            <span>Wikits v1.0.0</span>
                                         </div>
                                     </div>
                                 </div>
