@@ -1,17 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowBigUp, ArrowBigDown, MessageSquare, Share2, MoreHorizontal } from "lucide-react";
+import { ArrowBigUp, ArrowBigDown, MessageSquare, Share2, MoreHorizontal, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useState, useTransition } from "react";
 import { toggleVote } from "@/app/actions";
+import { deleteThread } from "@/app/actions/delete-thread";
 import { useUser } from "@clerk/nextjs";
 
 interface Thread {
     id: string;
     title: string;
     category: string;
+    authorId?: string;
     authorName: string;
     createdAt: string | Date;
     posts: { id: string; content?: string }[]; // Relation for count and preview
@@ -176,6 +178,22 @@ export function ForumThreadCard({ thread }: { thread: Thread }) {
                     <button className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted rounded-sm text-xs font-medium text-muted-foreground hover:text-foreground transition-colors" onClick={(e) => e.preventDefault()}>
                         <MoreHorizontal className="w-4 h-4" />
                     </button>
+
+                    {userId === thread.authorId && (
+                        <button
+                            className="flex items-center gap-2 px-2 py-1.5 hover:bg-red-500/10 rounded-sm text-xs font-medium text-muted-foreground hover:text-red-500 transition-colors ml-auto"
+                            onClick={async (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (confirm("Are you sure you want to delete this thread?")) {
+                                    await deleteThread(thread.id);
+                                }
+                            }}
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            Delete
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

@@ -1,4 +1,5 @@
 import { streamObject } from 'ai';
+import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { WIKIPEDIA_OUTLINE } from "@/lib/wikipedia-outline";
 import { defaultModel } from '@/lib/ai-config';
@@ -18,6 +19,10 @@ function slugify(text: string) {
 }
 
 export async function POST(req: Request) {
+    const { userId } = await auth();
+    if (!userId) {
+        return new NextResponse("Unauthorized", { status: 401 });
+    }
     const input = await req.json();
     let { topic, force } = input;
     const { topicId } = input;
@@ -398,7 +403,14 @@ export async function POST(req: Request) {
             }
 
             // Log Activity
-            await logActivity(`Generated Syllabus: ${object?.title || topic}`, "GENERATION");
+            await logActivity(
+                `Generated Syllabus: ${object?.title || topic}`,
+                "GENERATION",
+                {
+                    slug: slug,
+                    topicId: newTopic?.id
+                }
+            );
 
             // 4. Retroactive Parenting: Adopt existing topics that belong to this new one
             // If "Western Philosophy" is created, find topics that have "Western Philosophy" in their tags

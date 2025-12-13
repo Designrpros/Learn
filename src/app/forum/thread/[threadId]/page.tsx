@@ -1,6 +1,9 @@
+import { auth } from "@clerk/nextjs/server";
+import { deletePost } from "@/app/actions/delete-post";
+import { deleteThread } from "@/app/actions/delete-thread";
 import { getThreadById } from "@/lib/db-queries";
 import { formatDistanceToNow } from "date-fns";
-import { MessageSquare, ArrowBigUp, ArrowBigDown, ArrowLeft } from "lucide-react";
+import { MessageSquare, ArrowBigUp, ArrowBigDown, ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CreatePostForm } from "@/components/forum/create-post-form";
@@ -9,6 +12,7 @@ export const revalidate = 0;
 
 export default async function ThreadPage({ params }: { params: Promise<{ threadId: string }> }) {
     const { threadId } = await params;
+    const { userId } = await auth();
     const thread = await getThreadById(threadId);
 
     if (!thread) {
@@ -94,6 +98,17 @@ export default async function ThreadPage({ params }: { params: Promise<{ threadI
                                     <ArrowBigUp className="w-4 h-4" />
                                     Share
                                 </div>
+                                {userId === thread.authorId && (
+                                    <form action={async () => {
+                                        "use server";
+                                        await deleteThread(thread.id);
+                                    }} className="ml-auto">
+                                        <button className="flex items-center gap-2 hover:bg-red-500/10 hover:text-red-500 px-2 py-1 rounded transition-colors cursor-pointer">
+                                            <Trash2 className="w-4 h-4" />
+                                            Delete Thread
+                                        </button>
+                                    </form>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -129,6 +144,16 @@ export default async function ThreadPage({ params }: { params: Promise<{ threadI
                                             <ArrowBigUp className="w-4 h-4" /> Reply
                                         </button>
                                         <button className="hover:text-foreground">Share</button>
+                                        {userId === post.authorId && (
+                                            <form action={async () => {
+                                                "use server";
+                                                await deletePost(post.id);
+                                            }}>
+                                                <button className="hover:text-red-500 text-red-500/70 transition-colors flex items-center gap-1 ml-2">
+                                                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                </button>
+                                            </form>
+                                        )}
                                     </div>
                                 </div>
                             </div>

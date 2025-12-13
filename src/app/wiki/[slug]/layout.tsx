@@ -65,7 +65,7 @@ export default async function WikiTopicLayout({
                     <Link href="/wiki" className="hover:text-primary transition-colors">Database</Link>
 
                     {breadcrumbs.map((crumb, i) => (
-                        <React.Fragment key={crumb.slug}>
+                        <React.Fragment key={`${crumb.slug}-${i}`}>
                             <span className="opacity-40">/</span>
                             <Link href={`/wiki/${crumb.slug}`} className="hover:text-primary transition-colors">
                                 {crumb.title}

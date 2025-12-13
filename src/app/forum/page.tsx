@@ -5,7 +5,7 @@ import { ForumFilters } from '@/components/forum/forum-filters';
 import { PlusCircle, Info, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { CreateThreadButton } from '@/components/forum/create-thread-button';
-import { ForumDockActions } from '@/components/forum/forum-dock-actions';
+
 
 export const revalidate = 0;
 
@@ -24,12 +24,17 @@ export default async function ForumPage({
 
     return (
         <div className="min-h-screen pt-24 pb-32 px-4 md:px-8 max-w-7xl mx-auto">
-            <ForumDockActions />
             {/* Header */}
             {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">Community Forum</h1>
-                <p className="text-muted-foreground">Discuss topics, ask questions, and share knowledge.</p>
+            <div className="mb-8 flex items-end justify-between gap-4">
+                <div>
+                    <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">Community Forum</h1>
+                    <p className="text-muted-foreground">Discuss topics, ask questions, and share knowledge.</p>
+                </div>
+                {/* Mobile Create Button */}
+                <div className="lg:hidden">
+                    <CreateThreadButton variant="icon" />
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

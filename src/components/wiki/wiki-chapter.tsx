@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { WikiLink } from "./wiki-link";
 import { WikiImageGrid } from "./wiki-image-grid";
 import React, { useEffect } from "react";
+import { useUser, SignInButton } from "@clerk/nextjs";
 
 interface WikiChapterProps {
     chapter: {
@@ -23,6 +24,7 @@ interface WikiChapterProps {
 
 export function WikiChapter({ chapter, topicId, index }: WikiChapterProps) {
     const { activeJob, startJob } = useGenerationStore();
+    const { isSignedIn } = useUser();
     // Use local content to bridge stream gap
     const [localContent, setLocalContent] = React.useState<string | null | undefined>(chapter.content);
 
@@ -35,28 +37,25 @@ export function WikiChapter({ chapter, topicId, index }: WikiChapterProps) {
     useEffect(() => {
         if (chapter.content) {
             setLocalContent(chapter.content);
-            // If content arrives (e.g. from background gen), allow it to stay as user preference, 
-            // OR auto-open? Let's respect user interaction but maybe auto-open if we just generated it?
         }
     }, [chapter.content]);
 
     // Check if THIS chapter is the one being generated
-    // CRITICAL FIX: Only consider it "generating" if status is actually 'generating'
     const isGenerating = activeJob?.topicId === topicId &&
         activeJob?.chapterId === chapter.id &&
         activeJob?.status === 'generating';
 
     // Sync local content with Streaming Content
     useEffect(() => {
-        // Even if status is 'completed' or 'failed', we might want to sync the final content once more
-        // But the main streaming sync relies on 'content' update
         if (activeJob?.topicId === topicId && activeJob?.chapterId === chapter.id && activeJob?.content) {
             setLocalContent(activeJob.content);
-            if (!isOpen && activeJob.status === 'generating') setIsOpen(true); // Auto-open when generation starts
+            if (!isOpen && activeJob.status === 'generating') setIsOpen(true);
         }
-    }, [activeJob, topicId, chapter.id, isOpen]); // Depend on full activeJob object to catch status changes
+    }, [activeJob, topicId, chapter.id, isOpen]);
 
     const handleGenerate = () => {
+        if (!isSignedIn) return;
+
         startJob({
             type: 'chapter',
             topicId,
@@ -69,15 +68,15 @@ export function WikiChapter({ chapter, topicId, index }: WikiChapterProps) {
             setIsOpen(false);
         } else {
             setIsOpen(true);
-            // AUTO TRIGGER GENERATION ON OPEN if empty
-            if (!localContent && !isGenerating) {
+            // AUTO TRIGGER GENERATION ON OPEN if empty AND signed in
+            if (!localContent && !isGenerating && isSignedIn) {
                 handleGenerate();
             }
         }
     };
 
     const handleCopy = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent accordion toggle
+        e.stopPropagation();
         if (localContent) {
             navigator.clipboard.writeText(localContent);
             setJustCopied(true);
@@ -85,13 +84,11 @@ export function WikiChapter({ chapter, topicId, index }: WikiChapterProps) {
         }
     };
 
-    // Local images state (merged with DB images)
+    // Local images state
     const [localImages, setLocalImages] = React.useState<string[]>(
         (chapter.images as string[]) || []
     );
     const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-    // ... existing copy handler ...
 
     const handleUploadClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -101,15 +98,8 @@ export function WikiChapter({ chapter, topicId, index }: WikiChapterProps) {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-
-        // Create local preview URL
         const objectUrl = URL.createObjectURL(file);
-
-        // Update local state to show immediately in the grid (Top)
         setLocalImages(prev => [objectUrl, ...prev]);
-
-        // In a real app, we would upload 'file' to a server here and then save the returned URL to DB.
-        // For now, this preview persists only for the session.
     };
 
     return (
@@ -134,7 +124,7 @@ export function WikiChapter({ chapter, topicId, index }: WikiChapterProps) {
                             </h2>
                         </div>
 
-                        {/* Action Buttons (Visible on Hover or Open) */}
+                        {/* Action Buttons */}
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity mr-4">
                             {localContent && (
                                 <>
@@ -152,23 +142,19 @@ export function WikiChapter({ chapter, topicId, index }: WikiChapterProps) {
                                     >
                                         <ImageIcon className="w-4 h-4" />
                                     </button>
-                                    {/* Hidden Input */}
                                     <input
                                         type="file"
                                         ref={fileInputRef}
                                         className="hidden"
                                         accept="image/*"
                                         onChange={handleFileChange}
-                                        onClick={(e) => e.stopPropagation()} // Prevent accordion toggle
+                                        onClick={(e) => e.stopPropagation()}
                                     />
                                 </>
                             )}
                         </div>
                     </div>
 
-                    {/* Description Teaser (Visible when closed relative to header? Or just always?) 
-                        User asked: "closed by default with that short description". 
-                    */}
                     {!isOpen && chapter.description && (
                         <p className="text-muted-foreground text-sm leading-relaxed max-w-2xl mt-2 pl-[3.25rem]">
                             {chapter.description}
@@ -186,32 +172,17 @@ export function WikiChapter({ chapter, topicId, index }: WikiChapterProps) {
                 </div>
             </div>
 
-
-
             {/* Content Body */}
             {isOpen && (
                 <div className="pl-[3.25rem] mt-6">
-                    {/* Chapter Images */}
                     <WikiImageGrid images={localImages} className="mb-6" />
 
                     {localContent ? (
                         <article className={cn(
                             "prose prose-stone dark:prose-invert max-w-none prose-lg prose-p:leading-loose prose-p:mb-6 prose-headings:font-serif prose-headings:mt-8 prose-headings:mb-4",
-                            // Fade in
                             isGenerating && "opacity-80 transition-opacity duration-300"
                         )}>
-                            <ReactMarkdown
-                                components={{
-                                    a: WikiLink as any,
-                                    // Custom paragraph to allow future hover/comment logic
-                                    p: ({ node, ...props }) => (
-                                        <p {...props} className="mb-6 leading-relaxed hover:bg-muted/5 rounded-lg px-2 -mx-2 transition-colors relative group/p">
-                                            {props.children}
-                                            {/* Potential for paragraph-level actions here */}
-                                        </p>
-                                    )
-                                }}
-                            >
+                            <ReactMarkdown components={{ a: WikiLink as any }}>
                                 {localContent}
                             </ReactMarkdown>
                             {isGenerating && (
@@ -219,10 +190,36 @@ export function WikiChapter({ chapter, topicId, index }: WikiChapterProps) {
                             )}
                         </article>
                     ) : (
-                        // Loading State (Auto-Triggered, so this might be brief)
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground italic animate-pulse">
-                            <Sparkles className="w-4 h-4" />
-                            Generating content...
+                        // Empty State Handling
+                        <div className="py-8">
+                            {!isSignedIn ? (
+                                <div className="flex flex-col items-start gap-3 bg-red-500/5 border border-red-500/10 rounded-xl p-6">
+                                    <div className="flex items-center gap-2 text-red-500 font-medium">
+                                        <Sparkles className="w-4 h-4" />
+                                        <span>Authentication Required</span>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                        You must be signed in to generate this section's content.
+                                    </p>
+                                    <SignInButton mode="modal">
+                                        <button className="text-xs bg-red-500/10 text-red-500 hover:bg-red-500/20 px-4 py-2 rounded-lg font-medium transition-colors">
+                                            Sign In to Generate
+                                        </button>
+                                    </SignInButton>
+                                </div>
+                            ) : isGenerating ? (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground italic animate-pulse">
+                                    <Sparkles className="w-4 h-4" />
+                                    Generating content...
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleGenerate}
+                                    className="flex items-center gap-2 text-sm text-primary hover:underline"
+                                >
+                                    <Sparkles className="w-4 h-4" /> Generate Section
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>

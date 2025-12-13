@@ -20,11 +20,16 @@ interface UIState {
     setDatabaseViewMode: (mode: 'global' | 'personal') => void;
 
     closeAll: () => void;
+
+    // Global Dashboard Overlay
+    isDashboardOpen: boolean;
+    setDashboardOpen: (isOpen: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
     isSidebarOpen: false,
     isInspectorOpen: false,
+    isDashboardOpen: false,
     centerActions: null,
     mapViewMode: '2d',
     toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
@@ -33,6 +38,7 @@ export const useUIStore = create<UIState>((set) => ({
     setInspectorOpen: (isOpen) => set({ isInspectorOpen: isOpen }),
     setCenterActions: (actions) => set({ centerActions: actions }),
     setMapViewMode: (mode) => set({ mapViewMode: mode }),
+    setDashboardOpen: (isOpen) => set({ isDashboardOpen: isOpen }),
 
     // Database View Mode
     databaseViewMode: 'global',
@@ -41,5 +47,5 @@ export const useUIStore = create<UIState>((set) => ({
     mapSearchTerm: "",
     setMapSearchTerm: (term: string) => set({ mapSearchTerm: term }),
 
-    closeAll: () => set({ isSidebarOpen: false, isInspectorOpen: false }),
+    closeAll: () => set({ isSidebarOpen: false, isInspectorOpen: false, isDashboardOpen: false }),
 }));

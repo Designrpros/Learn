@@ -2,6 +2,9 @@
 
 import { createThread } from "@/app/actions";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { useState } from "react";
@@ -9,41 +12,34 @@ import { useState } from "react";
 export function CreateThreadDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const { isSignedIn } = useUser();
 
-    if (!isSignedIn) return null; // Or show a sign-in prompt inside?
-    if (!isOpen) return null;
+    if (!isSignedIn) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-card w-full max-w-lg rounded-xl border border-border shadow-2xl p-6 relative animate-in fade-in zoom-in-95 duration-200">
-                <button
-                    onClick={onClose}
-                    className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
-                >
-                    ✕
-                </button>
-
-                <h2 className="text-xl font-serif font-medium mb-4">Start a Discussion</h2>
+        <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                    <DialogTitle className="text-xl font-serif font-medium">Start a Discussion</DialogTitle>
+                </DialogHeader>
 
                 <form action={async (formData) => {
                     await createThread(formData);
                     onClose();
-                }} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Title</label>
-                        <input
+                }} className="space-y-4 mt-2">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Title</label>
+                        <Input
                             name="title"
-                            type="text"
-                            className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             placeholder="What's on your mind?"
                             required
+                            className="bg-muted/50"
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Category</label>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Category</label>
                         <select
                             name="category"
-                            className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
+                            className="flex h-10 w-full rounded-md border border-input bg-muted/50 px-3 py-2 text-base ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
                         >
                             <option value="General">General</option>
                             <option value="Q&A">Q&A</option>
@@ -52,13 +48,13 @@ export function CreateThreadDialog({ isOpen, onClose }: { isOpen: boolean; onClo
                         </select>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Content</label>
-                        <textarea
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Content</label>
+                        <Textarea
                             name="content"
-                            className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 min-h-[150px] focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
                             placeholder="Elaborate on your topic..."
                             required
+                            className="min-h-[150px] bg-muted/50 resize-none"
                         />
                     </div>
 
@@ -66,7 +62,7 @@ export function CreateThreadDialog({ isOpen, onClose }: { isOpen: boolean; onClo
                         <Button type="submit">Post Discussion</Button>
                     </div>
                 </form>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }

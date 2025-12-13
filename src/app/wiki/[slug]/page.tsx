@@ -1,8 +1,9 @@
-import { getOrCreateTopicStub, getTopicFAQs } from '@/lib/db-queries';
+import { getOrCreateTopicStub, getTopicFAQs, logActivity } from '@/lib/db-queries';
 import { notFound } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
 import React from 'react';
+import { auth } from "@clerk/nextjs/server";
 import { ArrowLeft, Book, Calendar, Loader2, Play, GitGraph, Sparkles } from 'lucide-react';
 import { WikiComments } from '@/components/wiki/wiki-comments';
 import { GenerationManager } from '@/components/generation-manager';
@@ -22,7 +23,22 @@ export const dynamic = 'force-dynamic'; // Ensure we always check fresh DB state
 
 export default async function TopicPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
+    const { userId } = await auth(); // Get current user
     const topic = await getOrCreateTopicStub(slug);
+
+    // Log Navigation Event (fire and forget)
+    if (topic && userId) {
+        // We catch errors to prevent logging from breaking the page load
+        try {
+            logActivity(
+                `Visited ${topic.title}`,
+                "NAVIGATION",
+                { slug: topic.slug, topicId: topic.id, userId } // Pass userId in metadata for now as schema support is mixed
+            ).catch(e => console.error("Failed to log visit:", e));
+        } catch (e) {
+            // Include a failsafe ignore
+        }
+    }
 
     if (!topic) {
         notFound();

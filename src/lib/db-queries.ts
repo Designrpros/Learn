@@ -323,8 +323,8 @@ export async function searchTopics(query: string) {
     // Simple ILIKE search for now
     const results = await db.query.topics.findMany({
         where: (topics, { ilike, or }) => or(
-            ilike(topics.title, `% ${query}% `),
-            ilike(topics.overview, `% ${query}% `)
+            ilike(topics.title, `%${query}%`),
+            ilike(topics.overview, `%${query}%`)
         ),
         limit: 5,
         columns: {

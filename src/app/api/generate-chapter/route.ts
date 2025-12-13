@@ -1,4 +1,5 @@
 import { streamText } from 'ai';
+import { auth } from '@clerk/nextjs/server';
 import { defaultModel } from '@/lib/ai-config';
 import { db } from '@/db';
 import { topics, chapters } from '@/db/schema';
@@ -12,6 +13,10 @@ function slugify(text: string) {
 }
 
 export async function POST(req: Request) {
+    const { userId } = await auth();
+    if (!userId) {
+        return new Response("Unauthorized", { status: 401 });
+    }
     const input = await req.json();
     let { topic, chapterTitle } = input;
     const { topicId, chapterId, context, chapterSlug } = input;

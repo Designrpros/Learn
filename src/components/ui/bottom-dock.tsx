@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Sidebar, Activity, House, Map as MapIcon, BookOpen, Layers, PanelRight } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CreateThreadButton } from "@/components/forum/create-thread-button";
 
 export function BottomDock() {
     const { isSidebarOpen, setSidebarOpen, isInspectorOpen, setInspectorOpen, centerActions } = useUIStore();
@@ -58,8 +59,13 @@ export function BottomDock() {
                     </div>
 
                     {/* Dynamic Actions (Center) */}
-                    {centerActions && (
+                    {(centerActions || pathname?.startsWith('/forum')) && (
                         <div className="flex items-center gap-2 px-2">
+                            {pathname?.startsWith('/forum') && (
+                                <div className="animate-in fade-in zoom-in-95 duration-200">
+                                    <CreateThreadButton variant="icon" />
+                                </div>
+                            )}
                             <div className="flex items-center gap-1 animate-in fade-in zoom-in-95 duration-200">
                                 {centerActions}
                             </div>
