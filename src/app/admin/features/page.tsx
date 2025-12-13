@@ -1,17 +1,35 @@
 
-"use client";
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { FlaskConical, Globe, Lock, Zap } from "lucide-react";
+import { FlaskConical, Globe, Plus } from "lucide-react";
+import { getFeatureFlags, createFeatureFlag } from "@/lib/features";
+import { FeatureToggle } from "@/components/admin/feature-toggle";
+import { Button } from "@/components/ui/button";
 
-export default function FeaturesPage() {
+export default async function FeaturesPage() {
+    let flags = await getFeatureFlags();
+
+    // Auto-seed if empty (for demo purposes)
+    if (flags.length === 0) {
+        await createFeatureFlag("maintenance_mode", "Disable access for all non-admin users.", false);
+        await createFeatureFlag("public_signups", "Allow new users to register accounts.", false);
+        await createFeatureFlag("new_wiki_ui", "Enable the v2 layout for wiki chapters.", false);
+        await createFeatureFlag("ai_search", "Use Vector Search instead of simple text match.", false);
+        flags = await getFeatureFlags();
+    }
+
+    const systemFlags = flags.filter(f => !f.key.startsWith("new_") && !f.key.startsWith("ai_"));
+    const experimentFlags = flags.filter(f => f.key.startsWith("new_") || f.key.startsWith("ai_"));
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-2">
-                <h2 className="text-2xl font-bold tracking-tight text-white">Feature Flags</h2>
-                <p className="text-neutral-400">Manage feature rollouts and system access.</p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h2 className="text-2xl font-bold tracking-tight text-white">Feature Flags</h2>
+                        <p className="text-neutral-400">Manage feature rollouts and system access.</p>
+                    </div>
+                </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
@@ -27,27 +45,21 @@ export default function FeaturesPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <label className="text-base font-medium text-white">Maintenance Mode</label>
-                                <p className="text-sm text-neutral-500">Disable access for all non-admin users.</p>
+                        {systemFlags.map(flag => (
+                            <div key={flag.id} className="flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <label className="text-base font-medium text-white capitalize">
+                                        {flag.key.replace(/_/g, " ")}
+                                    </label>
+                                    <p className="text-sm text-neutral-500">{flag.description}</p>
+                                </div>
+                                <FeatureToggle
+                                    id={flag.id}
+                                    isEnabled={flag.isEnabled}
+                                    label={flag.key}
+                                />
                             </div>
-                            <Switch />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <label className="text-base font-medium text-white">Public Signups</label>
-                                <p className="text-sm text-neutral-500">Allow new users to register accounts.</p>
-                            </div>
-                            <Switch defaultChecked />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <label className="text-base font-medium text-white">Read-Only Mode</label>
-                                <p className="text-sm text-neutral-500">Disable all database writes.</p>
-                            </div>
-                            <Switch />
-                        </div>
+                        ))}
                     </CardContent>
                 </Card>
 
@@ -63,30 +75,24 @@ export default function FeaturesPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <div className="flex items-center gap-2">
-                                    <label className="text-base font-medium text-white">New Wiki UI</label>
-                                    <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20 text-[10px]">BETA</Badge>
+                        {experimentFlags.map(flag => (
+                            <div key={flag.id} className="flex items-center justify-between">
+                                <div className="space-y-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-base font-medium text-white capitalize">
+                                            {flag.key.replace(/_/g, " ")}
+                                        </label>
+                                        <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-400 border-indigo-500/20 text-[10px]">BETA</Badge>
+                                    </div>
+                                    <p className="text-sm text-neutral-500">{flag.description}</p>
                                 </div>
-                                <p className="text-sm text-neutral-500">Enable the v2 layout for wiki chapters.</p>
+                                <FeatureToggle
+                                    id={flag.id}
+                                    isEnabled={flag.isEnabled}
+                                    label={flag.key}
+                                />
                             </div>
-                            <Switch defaultChecked />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <label className="text-base font-medium text-white">AI Search</label>
-                                <p className="text-sm text-neutral-500">Use Vector Search instead of simple text match.</p>
-                            </div>
-                            <Switch defaultChecked />
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <div className="space-y-0.5">
-                                <label className="text-base font-medium text-white">Forum Reactions</label>
-                                <p className="text-sm text-neutral-500">Enable emoji reactions on threads.</p>
-                            </div>
-                            <Switch />
-                        </div>
+                        ))}
                     </CardContent>
                 </Card>
             </div>

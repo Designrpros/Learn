@@ -13,7 +13,11 @@ const COLOR_BG = "#171717"; // Neutral-900
 const COLOR_DOT_BASE = "#525252"; // Neutral-600
 const COLOR_DOT_ACTIVE = "#ef4444"; // Red-500
 
-export default function DetailedDotMap() {
+const ISO_MAP: Record<string, string> = {
+    "US": "840", "GB": "826", "CA": "124", "AU": "036", "DE": "276", "FR": "250", "JP": "392", "NL": "528", "BR": "076", "IN": "356", "IT": "380", "ES": "724", "SE": "752", "NO": "578", "DK": "208", "CN": "156", "KR": "410", "AR": "032", "NZ": "554", "ZA": "710", "NG": "566", "EG": "818", "MX": "484"
+};
+
+export default function DetailedDotMap({ activeCountries = [] }: { activeCountries?: string[] }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [dimensions, setDimensions] = useState({ width: 800, height: 450 });
 
@@ -23,6 +27,14 @@ export default function DetailedDotMap() {
             const response = await fetch("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json");
             const topology = await response.json();
             const land = topojson.feature(topology, topology.objects.land);
+
+            // Prepare active features for hit testing
+            // Convert Alpha-2 codes (US) to Numeric (840) to match Topology
+            const activeIds = new Set(activeCountries.map(c => ISO_MAP[c] || ""));
+            // Get features for active countries
+            // @ts-ignore
+            const countries = topojson.feature(topology, topology.objects.countries).features;
+            const activeFeatures = countries.filter((f: any) => activeIds.has(f.id));
 
             // 2. Setup Canvas
             const canvas = canvasRef.current;
@@ -77,12 +89,24 @@ export default function DetailedDotMap() {
                 // Mock "High Activity" in specific areas
                 // (Using coordinate bounding boxes similar to previous map)
                 // Normalize x/y to 0-1
-                const nx = dot.x / width;
-                const ny = dot.y / height;
+                // const nx = dot.x / width;
+                // const ny = dot.y / height;
 
+                // Check Geocontains
+                // Invert back to Lat/Lon
+                const coords = projection.invert?.([dot.x, dot.y]);
                 let isHot = false;
-                if (nx > 0.15 && nx < 0.25 && ny > 0.25 && ny < 0.45) isHot = true; // US East
-                if (nx > 0.48 && nx < 0.53 && ny > 0.2 && ny < 0.35) isHot = true; // EU
+
+                if (coords && activeFeatures.length > 0) {
+                    // Check if this point is inside any active country feature
+                    // d3.geoContains(feature, [lon, lat])
+                    for (const feature of activeFeatures) {
+                        if (d3.geoContains(feature, coords)) {
+                            isHot = true;
+                            break;
+                        }
+                    }
+                }
 
                 ctx.fillStyle = isHot ? COLOR_DOT_ACTIVE : COLOR_DOT_BASE;
                 if (isHot) {
@@ -96,7 +120,7 @@ export default function DetailedDotMap() {
         };
 
         fetchMap();
-    }, []);
+    }, [activeCountries]);
 
     return (
         <div className="w-full aspect-[16/9] bg-neutral-900 border border-neutral-800 rounded-md overflow-hidden relative flex items-center justify-center">

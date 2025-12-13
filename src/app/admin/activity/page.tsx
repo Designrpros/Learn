@@ -1,5 +1,5 @@
 
-"use client";
+
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,16 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Search, Activity, User, Shield, AlertCircle, FileText } from "lucide-react";
 
-const ACTIVITY_LOGS = [
-    { id: 1, user: "Vegar Berentsen", action: "Deleted thread 'Next.js 15 Issues'", type: "Moderation", time: "2 min ago", icon: Shield, intent: "destructive" },
-    { id: 2, user: "Alice Johnson", action: "Upgraded to Pro Plan", type: "Billing", time: "15 min ago", icon: FileText, intent: "positive" },
-    { id: 3, user: "System", action: "Database backup completed", type: "System", time: "1 hour ago", icon: Activity, intent: "neutral" },
-    { id: 4, user: "Bob Smith", action: "Failed login attempt (IP: 192.168.1.1)", type: "Security", time: "2 hours ago", icon: AlertCircle, intent: "warning" },
-    { id: 5, user: "Carol White", action: "Published new wiki topic 'React Hooks'", type: "Content", time: "3 hours ago", icon: FileText, intent: "neutral" },
-    { id: 6, user: "Vegar Berentsen", action: "Changed 'Theme' setting to 'Dark'", type: "Settings", time: "5 hours ago", icon: User, intent: "neutral" },
-];
+import { getActivityLogs } from "@/lib/admin";
 
-export default function ActivityPage() {
+export default async function ActivityPage() {
+    const logs = await getActivityLogs();
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             <div className="flex flex-col gap-2">
@@ -48,12 +43,17 @@ export default function ActivityPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-8">
-                                {ACTIVITY_LOGS.map((log) => (
+                                {logs.length === 0 ? (
+                                    <div className="text-center py-12 text-neutral-500">
+                                        <Activity className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                                        <p>No activity recorded yet.</p>
+                                    </div>
+                                ) : logs.map((log) => (
                                     <div key={log.id} className="flex items-start gap-4">
                                         <div className={`mt-1 p-2 rounded-full bg-neutral-800/50 border border-neutral-700 ${log.intent === "destructive" ? "text-red-400 border-red-900/50" :
-                                                log.intent === "warning" ? "text-amber-400 border-amber-900/50" :
-                                                    log.intent === "positive" ? "text-emerald-400 border-emerald-900/50" :
-                                                        "text-neutral-400"
+                                            log.intent === "warning" ? "text-amber-400 border-amber-900/50" :
+                                                log.intent === "positive" ? "text-emerald-400 border-emerald-900/50" :
+                                                    "text-neutral-400"
                                             }`}>
                                             <log.icon className="w-4 h-4" />
                                         </div>

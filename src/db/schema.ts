@@ -203,3 +203,87 @@ export const usersRelations = relations(users, ({ many }) => ({
     votes: many(threadVotes),
 }));
 
+
+// --- CAMPAIGNS (Ads Manager) ---
+export const campaigns = pgTable('campaigns', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: text('user_id').notNull(), // Clerk User ID
+    name: text('name').notNull().default('Untitled Campaign'),
+    status: text('status').notNull().default('draft'), // "draft", "active", "paused", "completed"
+
+    // Creative
+    headline: text('headline'),
+    body: text('body'),
+    destinationUrl: text('destination_url'),
+    callToAction: text('call_to_action'),
+    images: jsonb('images'), // Array of image URLs
+
+    // Targeting & Delivery
+    targetCountries: jsonb('target_countries'), // Array of country IDs
+    dailyBudget: integer('daily_budget'), // In cents or whole dollars? Let's assume dollars for now matching UI, or maybe cents. UI shows 20, 500. Let's use numeric/integer. 
+    durationDays: integer('duration_days'),
+
+    // Metrics (Aggregated/Cached)
+    metrics: jsonb('metrics'), // { impressions: 0, clicks: 0, spend: 0 }
+
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
+    user: one(users, {
+        fields: [campaigns.userId],
+        references: [users.id],
+    }),
+    events: many(adEvents),
+}));
+
+export const adEvents = pgTable('ad_events', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id').references(() => campaigns.id).notNull(),
+    type: text('type').notNull(), // "impression", "click"
+    country: text('country'),
+    device: text('device'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const adEventsRelations = relations(adEvents, ({ one }) => ({
+    campaign: one(campaigns, {
+        fields: [adEvents.campaignId],
+        references: [campaigns.id],
+    }),
+}));
+
+
+// --- TRANSACTIONS ---
+export const transactions = pgTable('transactions', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id').references(() => campaigns.id), // Link to campaign if applicable
+    userId: text('user_id').notNull(), // Clerk User ID
+    amount: integer('amount').notNull(), // Amount in cents
+    currency: text('currency').default('usd').notNull(),
+    status: text('status').notNull(), // 'pending', 'succeeded', 'failed'
+    method: text('method').notNull(), // 'stripe', 'x402'
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const transactionsRelations = relations(transactions, ({ one }) => ({
+    campaign: one(campaigns, {
+        fields: [transactions.campaignId],
+        references: [campaigns.id],
+    }),
+    user: one(users, {
+        fields: [transactions.userId],
+        references: [users.id],
+    }),
+}));
+
+// --- FEATURE FLAGS ---
+export const featureFlags = pgTable('feature_flags', {
+    id: uuid('id').defaultRandom().primaryKey(),
+    key: text('key').notNull().unique(), // e.g. "new_dashboard"
+    description: text('description'),
+    isEnabled: boolean('is_enabled').default(false).notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});

@@ -31,6 +31,7 @@ import { Inspector } from "@/components/ui/inspector";
 import { BottomDock } from "@/components/ui/bottom-dock";
 import { getSidebarData } from "@/lib/db-queries";
 import { VectorBackground } from "@/components/ui/vector-background";
+import { Toaster } from "@/components/ui/sonner";
 
 import Script from "next/script";
 
@@ -71,6 +72,7 @@ export default async function RootLayout({
           <Inspector />
           <GenerationManager />
           <BottomDock />
+          <Toaster />
         </body>
       </html>
     </ClerkProvider>

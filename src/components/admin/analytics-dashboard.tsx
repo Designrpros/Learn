@@ -17,6 +17,7 @@ import {
 import DetailedDotMap from "./detailed-dot-map";
 import { KPICard } from "./kpi-card";
 import { LocaleStats } from "./locale-stats";
+import RecentActivityTable from "./recent-activity-table";
 
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -36,10 +37,14 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function AnalyticsDashboard({
     growthData,
-    topicData
+    topicData,
+    locationData,
+    recentActivity
 }: {
     growthData: any[];
     topicData: any[];
+    locationData?: any[];
+    recentActivity?: any[];
 }) {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -145,14 +150,19 @@ export default function AnalyticsDashboard({
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <DetailedDotMap />
+                            <DetailedDotMap activeCountries={locationData?.map(l => l.code)} />
                         </CardContent>
                     </Card>
                 </div>
 
                 <div className="md:col-span-1">
-                    <LocaleStats />
+                    <LocaleStats data={locationData} />
                 </div>
+            </div>
+
+            {/* Raw Activity Stream */}
+            <div className="grid gap-6">
+                <RecentActivityTable data={recentActivity || []} />
             </div>
         </div>
     );
