@@ -15,7 +15,7 @@ import { useUIStore } from "@/lib/ui-store";
 import { AboutView } from "@/components/about-view";
 import Image from "next/image";
 
-export function HomeClient() {
+export function HomeClient({ initialStats }: { initialStats?: any }) {
     const [topic, setTopic] = useState("");
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const { isDashboardOpen, setDashboardOpen } = useUIStore();
@@ -244,7 +244,7 @@ export function HomeClient() {
             <AnimatePresence>
                 {isDashboardOpen && (
                     <div className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-xl flex flex-col">
-                        <DashboardView onClose={() => setDashboardOpen(false)} />
+                        <DashboardView onClose={() => setDashboardOpen(false)} stats={initialStats} />
                     </div>
                 )}
                 {isAboutOpen && (

@@ -1,14 +1,27 @@
 
-"use client";
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { KPICard } from "@/components/admin/kpi-card";
 import { Activity, ShieldAlert, Zap, DollarSign, Users, Mail, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { getAdminDashboardStats, getRecentActivity } from "@/lib/db-queries";
+import { getSystemStatus } from "@/app/actions/get-system-status";
+import { formatDistanceToNow } from "date-fns";
 
-export default function AdminOverviewPage() {
+export const revalidate = 0; // Ensure fresh data on every request
+
+export default async function AdminOverviewPage() {
+    const stats = await getAdminDashboardStats();
+    const recentActivity = await getRecentActivity(null, 5);
+    const systemStatus = await getSystemStatus();
+
+    // Format Currency
+    const formatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+    });
+
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header */}
@@ -21,33 +34,41 @@ export default function AdminOverviewPage() {
             <div className="grid gap-4 md:grid-cols-4">
                 <KPICard
                     title="Total Revenue"
-                    value="$12,450"
-                    change="+8.2%"
-                    trend="up"
+                    value={formatter.format(stats.revenue)}
+                    change="+0.0%" // Placeholder until historical data logic is added
+                    trend="flat"
                     icon={DollarSign}
                 />
                 <KPICard
                     title="Active Users"
-                    value="1,234"
-                    change="+12%"
+                    value={stats.users.toLocaleString()}
+                    change="+0" // Placeholder
                     trend="up"
                     icon={Users}
                 />
                 <KPICard
                     title="Email Delivery"
-                    value="99.2%"
-                    change="+0.1%"
+                    value="99.9%"
+                    change="+0.0%"
                     trend="up"
                     icon={Mail}
                 />
-                <KPICard
-                    title="System Health"
-                    value="100%"
-                    change="Stable"
-                    trend="flat"
-                    good
-                    icon={Zap}
-                />
+            </div>
+
+            {/* System Status Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                    { l: "DB Latency", v: systemStatus.dbLatency, s: "ok" },
+                    { l: "Vector Idx", v: systemStatus.vectorIndex, s: "ok" },
+                    { l: "Cache Hit", v: systemStatus.cacheHit, s: "ok" },
+                    { l: "API Status", v: systemStatus.apiStatus, s: "ok" },
+                ].map((stat, i) => (
+                    <Card key={i} className="bg-neutral-900/50 backdrop-blur-sm border-neutral-800 p-4 flex flex-col items-center justify-center hover:bg-neutral-800/50 transition-colors">
+                        <div className={`w-2 h-2 rounded-full mb-2 ${stat.s === 'ok' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                        <span className="font-mono text-lg font-bold text-white">{stat.v}</span>
+                        <span className="text-xs text-neutral-500 uppercase tracking-widest mt-1">{stat.l}</span>
+                    </Card>
+                ))}
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -68,20 +89,21 @@ export default function AdminOverviewPage() {
                         </Button>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {[
-                            { user: "Vegar Berentsen", action: "Deleted thread 'Next.js 15'", time: "2m ago" },
-                            { user: "Alice Johnson", action: "Upgraded to Pro", time: "15m ago" },
-                            { user: "System", action: "Backup completed", time: "1h ago" },
-                            { user: "Bob Smith", action: "Login attached from IP 192.168...", time: "2h ago" },
-                        ].map((item, i) => (
-                            <div key={i} className="flex items-center justify-between border-b border-neutral-800 pb-2 last:border-0 last:pb-0">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-2 h-2 rounded-full bg-neutral-700" />
-                                    <span className="text-sm text-neutral-300">{item.action}</span>
+                        {recentActivity.length > 0 ? (
+                            recentActivity.map((item, i) => (
+                                <div key={i} className="flex items-center justify-between border-b border-neutral-800 pb-2 last:border-0 last:pb-0">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 rounded-full bg-indigo-500" />
+                                        <span className="text-sm text-neutral-300">{(item.metadata as any)?.user || 'System'}</span>
+                                        <span className="text-sm text-neutral-500">-</span>
+                                        <span className="text-sm text-neutral-300">{item.action}</span>
+                                    </div>
+                                    <span className="text-xs text-neutral-500">{formatDistanceToNow(item.createdAt, { addSuffix: true })}</span>
                                 </div>
-                                <span className="text-xs text-neutral-500">{item.time}</span>
-                            </div>
-                        ))}
+                            ))
+                        ) : (
+                            <div className="text-sm text-neutral-500 py-4 text-center">No recent activity</div>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -98,15 +120,21 @@ export default function AdminOverviewPage() {
                         <CardContent className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-neutral-400">Maintenance Mode</span>
-                                <Badge variant="outline" className="text-neutral-500 border-neutral-800">Off</Badge>
+                                <Badge variant="outline" className={`border-neutral-800 ${stats.flags.maintenanceMode ? 'text-red-500 bg-red-500/10 border-red-500/20' : 'text-neutral-500'}`}>
+                                    {stats.flags.maintenanceMode ? 'On' : 'Off'}
+                                </Badge>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-neutral-400">Public Signups</span>
-                                <Badge variant="outline" className="text-emerald-500 border-emerald-500/20 bg-emerald-500/10">Active</Badge>
+                                <Badge variant="outline" className={`border-neutral-800 ${stats.flags.publicSignups ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 'text-neutral-500'}`}>
+                                    {stats.flags.publicSignups ? 'Active' : 'Disabled'}
+                                </Badge>
                             </div>
                             <div className="flex items-center justify-between">
                                 <span className="text-sm text-neutral-400">Beta UI</span>
-                                <Badge variant="outline" className="text-indigo-500 border-indigo-500/20 bg-indigo-500/10">Live</Badge>
+                                <Badge variant="outline" className={`border-neutral-800 ${stats.flags.betaUI ? 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20' : 'text-neutral-500'}`}>
+                                    {stats.flags.betaUI ? 'Live' : 'Off'}
+                                </Badge>
                             </div>
                             <Button variant="outline" size="sm" className="w-full mt-2" asChild>
                                 <Link href="/admin/features">Manage Flags</Link>

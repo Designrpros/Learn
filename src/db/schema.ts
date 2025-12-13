@@ -166,6 +166,7 @@ export const events = pgTable('events', {
     id: uuid('id').defaultRandom().primaryKey(),
     type: text('type').notNull(), // "GENERATION", "NAVIGATION", "SYSTEM"
     action: text('action').notNull(),
+    userId: text('user_id'), // Clerk User ID - Made nullable for backward compatibility/system events
     metadata: jsonb('metadata'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });

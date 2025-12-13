@@ -2,6 +2,11 @@
 
 import { getRecentActivity as getRecentActivityQuery } from "@/lib/db-queries";
 
+import { auth } from "@clerk/nextjs/server";
+
 export async function getRecentActivity() {
-    return await getRecentActivityQuery();
+    const { userId } = await auth();
+    if (!userId) return [];
+
+    return await getRecentActivityQuery(userId);
 }

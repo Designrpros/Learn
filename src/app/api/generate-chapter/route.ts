@@ -123,7 +123,7 @@ export async function POST(req: Request) {
                     console.log(`[API] Chapter content saved to DB.`);
 
                     // Log Activity
-                    await logActivity(`Generated Chapter: ${chapterTitle} `, "GENERATION");
+                    await logActivity(userId, `Generated Chapter: ${chapterTitle} `, "GENERATION");
 
                     // ---------------------------------------------------------
                     // 3. Post-Processing: Extract & Create Sub-Concepts

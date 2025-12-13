@@ -20,12 +20,15 @@ export function Inspector() {
 
     useEffect(() => {
         if (isInspectorOpen) {
-            // Fetch Activity
-            getRecentActivity().then(data => setActivityData(data));
-
-            // Fetch Notifications (Inbox)
             if (isSignedIn) {
+                // Fetch Activity
+                getRecentActivity().then(data => setActivityData(data));
+
+                // Fetch Notifications (Inbox)
                 getNotifications().then(data => setNotifications(data));
+            } else {
+                setActivityData([]);
+                setNotifications([]);
             }
         }
     }, [isInspectorOpen, isSignedIn]);

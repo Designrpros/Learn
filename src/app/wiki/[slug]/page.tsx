@@ -31,6 +31,7 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
         // We catch errors to prevent logging from breaking the page load
         try {
             logActivity(
+                userId,
                 `Visited ${topic.title}`,
                 "NAVIGATION",
                 { slug: topic.slug, topicId: topic.id, userId } // Pass userId in metadata for now as schema support is mixed

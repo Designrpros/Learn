@@ -404,6 +404,7 @@ export async function POST(req: Request) {
 
             // Log Activity
             await logActivity(
+                userId,
                 `Generated Syllabus: ${object?.title || topic}`,
                 "GENERATION",
                 {

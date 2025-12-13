@@ -261,6 +261,23 @@ export function Sidebar() {
                             ) : (
                                 // --- TREE VIEW (LAZY) ---
                                 <div className="flex flex-col gap-0.5 pb-10">
+                                    {/* --- MENU LINKS --- */}
+                                    <div className="flex flex-col gap-1 pb-2 border-b border-border/40 mb-2">
+                                        <div className="text-xs font-medium text-muted-foreground px-2 py-2 uppercase tracking-wider mb-1 flex items-center justify-between">
+                                            <span>Community</span>
+                                        </div>
+                                        <Link
+                                            href="/leaderboard"
+                                            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted/50 transition-colors group mx-2 bg-gradient-to-r from-yellow-500/5 to-transparent border border-yellow-500/10"
+                                            onClick={() => {
+                                                if (window.innerWidth < 768) setSidebarOpen(false);
+                                            }}
+                                        >
+                                            <Icons.Trophy className="w-4 h-4 text-yellow-500 group-hover:scale-110 transition-transform" />
+                                            <span className="text-sm font-medium text-foreground">Leaderboard</span>
+                                        </Link>
+                                    </div>
+
                                     <div className="text-xs font-medium text-muted-foreground px-2 py-2 uppercase tracking-wider mb-1 flex items-center justify-between">
                                         <span>Knowledge Graph</span>
                                     </div>

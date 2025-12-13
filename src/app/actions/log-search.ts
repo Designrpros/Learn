@@ -9,6 +9,7 @@ export async function logSearch(term: string) {
     // Log regardless of auth status, but include ID if present
     // Type: SEARCH ensures we can filter easily later
     await logActivity(
+        userId,
         `Searched for "${term}"`,
         "SEARCH",
         {
