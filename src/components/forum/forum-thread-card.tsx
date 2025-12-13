@@ -13,7 +13,7 @@ interface Thread {
     id: string;
     title: string;
     category: string;
-    authorId?: string;
+    authorId?: string | null;
     authorName: string;
     createdAt: string | Date;
     posts: { id: string; content?: string }[]; // Relation for count and preview
