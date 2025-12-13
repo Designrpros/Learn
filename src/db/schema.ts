@@ -186,3 +186,20 @@ export const faqsRelations = relations(faqs, ({ one }) => ({
     }),
 }));
 
+// --- USERS ---
+export const users = pgTable('users', {
+    id: text('id').primaryKey(), // Clerk User ID
+    email: text('email').notNull(),
+    username: text('username'),
+    role: text('role').default('user').notNull(), // 'admin' | 'user'
+    plan: text('plan').default('free').notNull(), // 'free' | 'pro'
+    lastActiveAt: timestamp('last_active_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const usersRelations = relations(users, ({ many }) => ({
+    threads: many(threads),
+    posts: many(posts),
+    votes: many(threadVotes),
+}));
+
